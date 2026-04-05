@@ -2,27 +2,89 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Big Steins Games</title>
+<title>BSMG - Game Hub</title>
 
 <style>
-body{margin:0;font-family:Arial;background:#020617;color:white;display:flex;}
-.sidebar{width:220px;background:#020617;border-right:1px solid #1e293b;padding:20px;height:100vh;}
-.sidebar button{width:100%;margin-top:10px;padding:10px;border:none;border-radius:8px;background:#22c55e;color:black;font-weight:bold;cursor:pointer;}
+body{
+  margin:0;
+  font-family:Arial;
+  background: radial-gradient(circle at top, #020617, #020617 60%, #000000);
+  color:white;
+  display:flex;
+}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;
+  background:#020617;
+  border-right:1px solid #1e293b;
+  padding:20px;
+  height:100vh;
+}
+.sidebar button{
+  width:100%;
+  margin-top:10px;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#22c55e;
+  color:black;
+  font-weight:bold;
+  cursor:pointer;
+  transition:0.2s;
+}
+.sidebar button:hover{
+  background:#16a34a;
+  transform:scale(1.05);
+}
+
 .main{flex:1;padding:20px;}
 
 .card{background:#0f172a;padding:15px;margin:10px 0;border-radius:10px;}
 .userBox{background:#1e293b;padding:10px;margin:10px 0;border-radius:10px;}
 
 input,button{padding:10px;margin:5px;border-radius:8px;border:none;}
-button{background:#22c55e;cursor:pointer;}
 
-#coins{transition: all 0.2s ease;}
+#coins{
+  transition:all 0.2s ease;
+  text-shadow:0 0 10px rgba(255,215,0,0.7);
+}
 
+/* FEATURED GAME */
+.featuredGame{
+  position:relative;
+  margin-bottom:30px;
+  border-radius:15px;
+  overflow:hidden;
+}
+.featuredImg{
+  width:100%;
+  height:200px;
+  object-fit:cover;
+  filter:brightness(0.6);
+}
+.featuredOverlay{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:20px;
+}
+.featuredOverlay h1{margin:0;font-size:28px;}
+.featuredOverlay button{
+  margin-top:10px;
+  width:150px;
+}
+
+/* GAME GRID */
 .gameGrid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
   gap:20px;
-  margin-top:20px;
 }
 
 .gameCard{
@@ -30,16 +92,35 @@ button{background:#22c55e;cursor:pointer;}
   padding:15px;
   border-radius:12px;
   text-align:center;
-  transition:0.2s;
+  transition:0.25s;
+  position:relative;
+  overflow:hidden;
 }
 
+.gameCard::before{
+  content:"";
+  position:absolute;
+  top:-50%;
+  left:-50%;
+  width:200%;
+  height:200%;
+  background:linear-gradient(120deg, transparent, rgba(34,197,94,0.2), transparent);
+  transform:rotate(25deg);
+  opacity:0;
+  transition:0.3s;
+}
+
+.gameCard:hover::before{opacity:1;}
+
 .gameCard:hover{
-  transform:scale(1.05);
-  box-shadow:0 0 15px rgba(34,197,94,0.5);
+  transform:translateY(-5px) scale(1.05);
+  box-shadow:0 10px 25px rgba(34,197,94,0.3);
 }
 
 .gameImg{
   width:100%;
+  height:140px;
+  object-fit:cover;
   border-radius:10px;
   margin-bottom:10px;
 }
@@ -58,6 +139,7 @@ button{background:#22c55e;cursor:pointer;}
 
 <div class="main">
 
+<!-- DASHBOARD -->
 <div id="dashboard">
   <h1>Big Steins Games</h1>
   <div class="card">
@@ -90,27 +172,39 @@ button{background:#22c55e;cursor:pointer;}
   </div>
 </div>
 
+<!-- GAMES -->
 <div id="games" style="display:none;">
+
+  <!-- FEATURED -->
+  <div class="featuredGame">
+    <img src="https://images.unsplash.com/photo-1606813907291-d86efa9b94db?q=80&w=1200" class="featuredImg">
+    <div class="featuredOverlay">
+      <h1>Kart Racing</h1>
+      <p>Fast-paced racing chaos. Drift, boost, dominate.</p>
+      <button onclick="openKart()">Play Now</button>
+    </div>
+  </div>
+
   <h2>🎮 Game Library</h2>
 
   <div class="gameGrid">
 
     <div class="gameCard">
-      <img src="https://via.placeholder.com/300x150?text=Clicker" class="gameImg">
+      <img src="https://images.unsplash.com/photo-1611996575749-79a3a250f948?q=80&w=800" class="gameImg">
       <h3>Big Stein Clicker</h3>
       <p>Cost: <span id="price-clicker">0</span> coins</p>
       <button onclick="openGame()">Play</button>
     </div>
 
     <div class="gameCard">
-      <img src="https://via.placeholder.com/300x150?text=Kart+Racing" class="gameImg">
+      <img src="https://images.unsplash.com/photo-1606813907291-d86efa9b94db?q=80&w=800" class="gameImg">
       <h3>Kart Racing</h3>
       <p>Cost: <span id="price-kart">0</span> coins</p>
       <button onclick="openKart()">Play</button>
     </div>
 
     <div class="gameCard">
-      <img src="https://via.placeholder.com/300x150?text=Survival" class="gameImg">
+      <img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=800" class="gameImg">
       <h3>Street Survival Simulator</h3>
       <p>Cost: <span id="price-survival">0</span> coins</p>
       <button onclick="openSurvival()">Play</button>
@@ -121,12 +215,14 @@ button{background:#22c55e;cursor:pointer;}
   <p id="gameMessage"></p>
 </div>
 
+<!-- LOGIN -->
 <div id="login" style="display:none;" class="card">
   <input id="loginUsername" placeholder="Username">
   <input id="password" type="password" placeholder="Password">
   <button onclick="loginUser()">Login</button>
 </div>
 
+<!-- SIGNUP -->
 <div id="signup" style="display:none;" class="card">
   <input id="username" placeholder="Username">
   <input id="newPassword" type="password" placeholder="Password">
@@ -149,7 +245,6 @@ let prices = {};
 function el(id){return document.getElementById(id);}
 function fakeEmail(u){return u.toLowerCase()+"@bsmg.local";}
 
-// NAV
 function hideAll(){
   ["dashboard","games","login","signup"].forEach(id=>el(id).style.display="none");
 }
@@ -158,60 +253,37 @@ window.showGames=()=>{hideAll();el("games").style.display="block";}
 window.showLogin=()=>{hideAll();el("login").style.display="block";}
 window.showSignup=()=>{hideAll();el("signup").style.display="block";}
 
-// ANIMATION
 function animateCoins(){
   const c = el("coins");
   c.style.transform="scale(1.3)";
   c.style.color="#22c55e";
-  setTimeout(()=>{
-    c.style.transform="scale(1)";
-    c.style.color="white";
-  },200);
+  setTimeout(()=>{c.style.transform="scale(1)";c.style.color="white";},200);
 }
 
-// UI
-function updateUI(){
-  el("coins").innerText=coins;
-}
+function updateUI(){el("coins").innerText=coins;}
 
-// 🔥 LOAD PRICES
 async function loadPrices(){
   const { data } = await supabase.from("games").select("*");
-  data.forEach(g=>{
-    prices[g.id] = g.price;
-  });
-  updatePricesUI();
+  data.forEach(g=>prices[g.id]=g.price);
+  el("price-clicker").innerText=prices.clicker||0;
+  el("price-kart").innerText=prices.kart||0;
+  el("price-survival").innerText=prices.survival||0;
 }
 
-function updatePricesUI(){
-  el("price-clicker").innerText = prices.clicker || 0;
-  el("price-kart").innerText = prices.kart || 0;
-  el("price-survival").innerText = prices.survival || 0;
-}
-
-// SIGNUP
 window.signupUser=async()=>{
   const u=el("username").value;
   const p=el("newPassword").value;
 
-  const {data,error}=await supabase.auth.signUp({
-    email:fakeEmail(u),password:p
-  });
-
-  if(error){alert("SIGNUP ERROR: "+error.message);return;}
+  const {data,error}=await supabase.auth.signUp({email:fakeEmail(u),password:p});
+  if(error){alert(error.message);return;}
 
   await supabase.from("users").insert({
-    id:data.user.id,
-    username:u,
-    coins:0,
-    is_admin:false,
-    banned:false
+    id:data.user.id,username:u,coins:0,is_admin:false,banned:false
   });
 
   alert("Account created");
 };
 
-// LOGIN
 window.loginUser=async()=>{
   const u=el("loginUsername").value;
   const p=el("password").value;
@@ -220,123 +292,71 @@ window.loginUser=async()=>{
     email:fakeEmail(u),password:p
   });
 
-  if(error){alert("LOGIN ERROR: "+error.message);return;}
+  if(error){alert(error.message);return;}
 
   user=data.user;
 
   const {data:rows}=await supabase.from("users").select("*").eq("id",user.id);
   const me=rows[0];
 
-  if(me.banned){alert("You are banned");return;}
-
   coins=me.coins||0;
   isAdmin=me.is_admin;
 
-  if(isAdmin){
-    el("adminPanel").style.display="block";
-    loadUsers();
-  }
-
+  if(isAdmin){el("adminPanel").style.display="block";loadUsers();}
   await loadPrices();
 
   updateUI();
   showDashboard();
 };
 
-// ADMIN USERS
 async function loadUsers(){
   const {data}=await supabase.from("users").select("*");
   el("adminUsers").innerHTML="";
-
   data.forEach(u=>{
-    const d=document.createElement("div");
-    d.className="userBox";
-    d.innerHTML=`
+    el("adminUsers").innerHTML+=`
+    <div class="userBox">
       ${u.username} (${u.coins})
       <input id="c-${u.id}">
       <button onclick="setCoins('${u.id}')">Set</button>
-      <button onclick="ban('${u.id}',${u.banned})">
-        ${u.banned?"Unban":"Ban"}
-      </button>
-    `;
-    el("adminUsers").appendChild(d);
+    </div>`;
   });
 }
 
-// SET COINS
 window.setCoins=async(id)=>{
   const v=parseFloat(el("c-"+id).value);
-  if(isNaN(v)) return;
-
   await supabase.from("users").update({coins:v}).eq("id",id);
-
-  if(user && id===user.id){
-    coins=v;
-    updateUI();
-    animateCoins();
-  }
-
+  if(user && id===user.id){coins=v;updateUI();animateCoins();}
   loadUsers();
 };
 
-// SET PRICE
 window.setPrice=async(id)=>{
   const v=parseFloat(el("set-"+id).value);
-  if(isNaN(v)) return;
-
   await supabase.from("games").update({price:v}).eq("id",id);
-
   prices[id]=v;
-  updatePricesUI();
+  loadPrices();
 };
 
-// GAME FUNCTIONS
 window.openGame=async()=>{
-  if(coins < prices.clicker){
-    el("gameMessage").innerText="Need "+prices.clicker+" coins";
-    return;
-  }
-
-  coins -= prices.clicker;
-  updateUI();
-  animateCoins();
-
+  if(coins<prices.clicker){el("gameMessage").innerText="Need "+prices.clicker;return;}
+  coins-=prices.clicker;updateUI();animateCoins();
   await supabase.from("users").update({coins}).eq("id",user.id);
-
-  window.open("https://epsteinclicker.github.io/","_blank");
+  window.open("https://epsteinclicker.github.io/");
 };
 
 window.openKart=async()=>{
-  if(coins < prices.kart){
-    el("gameMessage").innerText="Need "+prices.kart+" coins";
-    return;
-  }
-
-  coins -= prices.kart;
-  updateUI();
-  animateCoins();
-
+  if(coins<prices.kart){el("gameMessage").innerText="Need "+prices.kart;return;}
+  coins-=prices.kart;updateUI();animateCoins();
   await supabase.from("users").update({coins}).eq("id",user.id);
-
-  window.open("https://mkpc.malahieude.net/","_blank");
+  window.open("https://mkpc.malahieude.net/");
 };
 
 window.openSurvival=async()=>{
-  if(coins < prices.survival){
-    el("gameMessage").innerText="Need "+prices.survival+" coins";
-    return;
-  }
-
-  coins -= prices.survival;
-  updateUI();
-  animateCoins();
-
+  if(coins<prices.survival){el("gameMessage").innerText="Need "+prices.survival;return;}
+  coins-=prices.survival;updateUI();animateCoins();
   await supabase.from("users").update({coins}).eq("id",user.id);
-
-  window.open("https://example.com","_blank");
+  window.open("https://example.com");
 };
 
-// LIVE COINS UPDATE
 supabase.channel('coins')
 .on('postgres_changes',{event:'UPDATE',schema:'public',table:'users'},payload=>{
   if(user && payload.new.id===user.id){
