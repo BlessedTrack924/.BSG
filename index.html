@@ -18,7 +18,6 @@ button{background:#22c55e;cursor:pointer;}
 
 #coins{transition: all 0.2s ease;}
 
-/* GAME HUB */
 .gameGrid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
@@ -59,7 +58,6 @@ button{background:#22c55e;cursor:pointer;}
 
 <div class="main">
 
-<!-- DASHBOARD -->
 <div id="dashboard">
   <h1>Big Steins Games</h1>
   <div class="card">
@@ -69,10 +67,29 @@ button{background:#22c55e;cursor:pointer;}
   <div id="adminPanel" class="card" style="display:none;">
     <h3>Admin Dashboard</h3>
     <div id="adminUsers"></div>
+
+    <h3>Game Prices</h3>
+
+    <div class="userBox">
+      Clicker:
+      <input id="set-clicker">
+      <button onclick="setPrice('clicker')">Set</button>
+    </div>
+
+    <div class="userBox">
+      Kart:
+      <input id="set-kart">
+      <button onclick="setPrice('kart')">Set</button>
+    </div>
+
+    <div class="userBox">
+      Survival:
+      <input id="set-survival">
+      <button onclick="setPrice('survival')">Set</button>
+    </div>
   </div>
 </div>
 
-<!-- GAMES -->
 <div id="games" style="display:none;">
   <h2>🎮 Game Library</h2>
 
@@ -81,15 +98,22 @@ button{background:#22c55e;cursor:pointer;}
     <div class="gameCard">
       <img src="https://via.placeholder.com/300x150?text=Clicker" class="gameImg">
       <h3>Big Stein Clicker</h3>
-      <p>Cost: 25 coins</p>
+      <p>Cost: <span id="price-clicker">0</span> coins</p>
       <button onclick="openGame()">Play</button>
     </div>
 
     <div class="gameCard">
       <img src="https://via.placeholder.com/300x150?text=Kart+Racing" class="gameImg">
       <h3>Kart Racing</h3>
-      <p>Cost: 50 coins</p>
+      <p>Cost: <span id="price-kart">0</span> coins</p>
       <button onclick="openKart()">Play</button>
+    </div>
+
+    <div class="gameCard">
+      <img src="https://via.placeholder.com/300x150?text=Survival" class="gameImg">
+      <h3>Street Survival Simulator</h3>
+      <p>Cost: <span id="price-survival">0</span> coins</p>
+      <button onclick="openSurvival()">Play</button>
     </div>
 
   </div>
@@ -97,14 +121,12 @@ button{background:#22c55e;cursor:pointer;}
   <p id="gameMessage"></p>
 </div>
 
-<!-- LOGIN -->
 <div id="login" style="display:none;" class="card">
   <input id="loginUsername" placeholder="Username">
   <input id="password" type="password" placeholder="Password">
   <button onclick="loginUser()">Login</button>
 </div>
 
-<!-- SIGNUP -->
 <div id="signup" style="display:none;" class="card">
   <input id="username" placeholder="Username">
   <input id="newPassword" type="password" placeholder="Password">
@@ -122,6 +144,7 @@ const supabase = createClient(
 );
 
 let user=null, coins=0, isAdmin=false;
+let prices = {};
 
 function el(id){return document.getElementById(id);}
 function fakeEmail(u){return u.toLowerCase()+"@bsmg.local";}
@@ -149,6 +172,21 @@ function animateCoins(){
 // UI
 function updateUI(){
   el("coins").innerText=coins;
+}
+
+// 🔥 LOAD PRICES
+async function loadPrices(){
+  const { data } = await supabase.from("games").select("*");
+  data.forEach(g=>{
+    prices[g.id] = g.price;
+  });
+  updatePricesUI();
+}
+
+function updatePricesUI(){
+  el("price-clicker").innerText = prices.clicker || 0;
+  el("price-kart").innerText = prices.kart || 0;
+  el("price-survival").innerText = prices.survival || 0;
 }
 
 // SIGNUP
@@ -199,11 +237,13 @@ window.loginUser=async()=>{
     loadUsers();
   }
 
+  await loadPrices();
+
   updateUI();
   showDashboard();
 };
 
-// ADMIN
+// ADMIN USERS
 async function loadUsers(){
   const {data}=await supabase.from("users").select("*");
   el("adminUsers").innerHTML="";
@@ -223,9 +263,8 @@ async function loadUsers(){
   });
 }
 
+// SET COINS
 window.setCoins=async(id)=>{
-  if(!isAdmin)return;
-
   const v=parseFloat(el("c-"+id).value);
   if(isNaN(v)) return;
 
@@ -240,21 +279,25 @@ window.setCoins=async(id)=>{
   loadUsers();
 };
 
-window.ban=async(id,b)=>{
-  if(!isAdmin)return;
-  if(id===user.id){alert("Can't ban yourself");return;}
-  await supabase.from("users").update({banned:!b}).eq("id",id);
-  loadUsers();
+// SET PRICE
+window.setPrice=async(id)=>{
+  const v=parseFloat(el("set-"+id).value);
+  if(isNaN(v)) return;
+
+  await supabase.from("games").update({price:v}).eq("id",id);
+
+  prices[id]=v;
+  updatePricesUI();
 };
 
 // GAME FUNCTIONS
 window.openGame=async()=>{
-  if(coins<25){
-    el("gameMessage").innerText="Need 25 coins";
+  if(coins < prices.clicker){
+    el("gameMessage").innerText="Need "+prices.clicker+" coins";
     return;
   }
 
-  coins-=25;
+  coins -= prices.clicker;
   updateUI();
   animateCoins();
 
@@ -264,12 +307,12 @@ window.openGame=async()=>{
 };
 
 window.openKart=async()=>{
-  if(coins<50){
-    el("gameMessage").innerText="Need 50 coins";
+  if(coins < prices.kart){
+    el("gameMessage").innerText="Need "+prices.kart+" coins";
     return;
   }
 
-  coins-=50;
+  coins -= prices.kart;
   updateUI();
   animateCoins();
 
@@ -278,20 +321,31 @@ window.openKart=async()=>{
   window.open("https://mkpc.malahieude.net/","_blank");
 };
 
-// LIVE UPDATES
-supabase
-  .channel('coins-changes')
-  .on('postgres_changes',
-    { event:'UPDATE', schema:'public', table:'users' },
-    payload=>{
-      if(user && payload.new.id===user.id){
-        coins=payload.new.coins;
-        updateUI();
-        animateCoins();
-      }
-    }
-  )
-  .subscribe();
+window.openSurvival=async()=>{
+  if(coins < prices.survival){
+    el("gameMessage").innerText="Need "+prices.survival+" coins";
+    return;
+  }
+
+  coins -= prices.survival;
+  updateUI();
+  animateCoins();
+
+  await supabase.from("users").update({coins}).eq("id",user.id);
+
+  window.open("https://example.com","_blank");
+};
+
+// LIVE COINS UPDATE
+supabase.channel('coins')
+.on('postgres_changes',{event:'UPDATE',schema:'public',table:'users'},payload=>{
+  if(user && payload.new.id===user.id){
+    coins=payload.new.coins;
+    updateUI();
+    animateCoins();
+  }
+})
+.subscribe();
 
 </script>
 
