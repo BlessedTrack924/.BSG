@@ -19,7 +19,7 @@ body { margin:0; overflow:hidden; background:black; }
 <div id="ui">
 Click to start<br>
 WASD move | Shift sprint | Space jump<br>
-Reach the red marker<br>
+Reach the red marker
 </div>
 
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -28,13 +28,13 @@ Reach the red marker<br>
 <script>
 // SCENE
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x111111);
+scene.background = new THREE.Color(0x0a0a0a);
 
 // CAMERA
 const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
 
 // RENDERER
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 
@@ -43,48 +43,51 @@ const controls = new THREE.PointerLockControls(camera, document.body);
 document.addEventListener("click", () => controls.lock());
 scene.add(controls.getObject());
 
-// LIGHT
-const light = new THREE.HemisphereLight(0xffffff,0x444444,1);
-scene.add(light);
+// LIGHTING (better visuals)
+const hemi = new THREE.HemisphereLight(0xffffff,0x444444,1);
+scene.add(hemi);
 
-// FLOOR (CITY GROUND)
+// GROUND
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(200,200),
-  new THREE.MeshBasicMaterial({color:0x222222})
+  new THREE.MeshStandardMaterial({color:0x1a1a1a})
 );
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
 
-// BUILDINGS
-for(let i=0;i<50;i++){
+// ROADS
+const road = new THREE.Mesh(
+  new THREE.PlaneGeometry(200,20),
+  new THREE.MeshStandardMaterial({color:0x333333})
+);
+road.rotation.x = -Math.PI/2;
+scene.add(road);
+
+// BUILDINGS (with collision)
+const buildings = [];
+
+for(let i=0;i<40;i++){
+  const height = Math.random()*10+3;
+
   const b = new THREE.Mesh(
-    new THREE.BoxGeometry(2, Math.random()*8+2, 2),
-    new THREE.MeshBasicMaterial({color:0x555555})
+    new THREE.BoxGeometry(3,height,3),
+    new THREE.MeshStandardMaterial({color:0x555555})
   );
+
   b.position.set(
     Math.random()*100-50,
-    b.geometry.parameters.height/2,
+    height/2,
     Math.random()*100-50
   );
+
   scene.add(b);
+  buildings.push(b);
 }
 
-// NPCs
-const npcs = [];
-for(let i=0;i<5;i++){
-  const npc = new THREE.Mesh(
-    new THREE.BoxGeometry(1,2,1),
-    new THREE.MeshBasicMaterial({color:0x00ffff})
-  );
-  npc.position.set(Math.random()*20-10,1,Math.random()*20-10);
-  scene.add(npc);
-  npcs.push(npc);
-}
-
-// MISSION TARGET
+// TARGET
 const target = new THREE.Mesh(
   new THREE.BoxGeometry(1,1,1),
-  new THREE.MeshBasicMaterial({color:0xff0000})
+  new THREE.MeshStandardMaterial({color:0xff0000})
 );
 target.position.set(10,1,-10);
 scene.add(target);
@@ -93,10 +96,9 @@ scene.add(target);
 camera.position.y = 1.6;
 
 // MOVEMENT
-let forward=false, back=false, left=false, right=false;
-let velocityY = 0;
-let onGround = true;
-let sprint = false;
+let forward=false, back=false, left=false, right=false, sprint=false;
+let velocity = new THREE.Vector3();
+let canJump = true;
 
 document.addEventListener("keydown", e=>{
   if(e.key==="w") forward=true;
@@ -105,9 +107,9 @@ document.addEventListener("keydown", e=>{
   if(e.key==="d") right=true;
   if(e.key==="Shift") sprint=true;
 
-  if(e.code==="Space" && onGround){
-    velocityY = 0.2;
-    onGround=false;
+  if(e.code==="Space" && canJump){
+    velocity.y = 0.2;
+    canJump = false;
   }
 });
 
@@ -119,42 +121,61 @@ document.addEventListener("keyup", e=>{
   if(e.key==="Shift") sprint=false;
 });
 
+// COLLISION CHECK
+function checkCollision(pos){
+  for(let b of buildings){
+    if(
+      Math.abs(pos.x - b.position.x) < 2 &&
+      Math.abs(pos.z - b.position.z) < 2
+    ){
+      return true;
+    }
+  }
+  return false;
+}
+
 // LOOP
 function animate(){
   requestAnimationFrame(animate);
 
   let speed = sprint ? 0.2 : 0.1;
 
-  if(forward) controls.moveForward(speed);
-  if(back) controls.moveForward(-speed);
-  if(left) controls.moveRight(-speed);
-  if(right) controls.moveRight(speed);
+  let move = new THREE.Vector3();
+
+  if(forward) move.z -= speed;
+  if(back) move.z += speed;
+  if(left) move.x -= speed;
+  if(right) move.x += speed;
+
+  // APPLY ROTATION
+  const direction = new THREE.Vector3();
+  controls.getDirection(direction);
+
+  const rightVec = new THREE.Vector3();
+  rightVec.crossVectors(direction, new THREE.Vector3(0,1,0));
+
+  let newPos = camera.position.clone();
+  newPos.add(direction.multiplyScalar(-move.z));
+  newPos.add(rightVec.multiplyScalar(move.x));
+
+  if(!checkCollision(newPos)){
+    camera.position.copy(newPos);
+  }
 
   // GRAVITY
-  velocityY -= 0.01;
-  camera.position.y += velocityY;
+  velocity.y -= 0.01;
+  camera.position.y += velocity.y;
 
   if(camera.position.y <= 1.6){
     camera.position.y = 1.6;
-    velocityY = 0;
-    onGround = true;
+    velocity.y = 0;
+    canJump = true;
   }
 
-  // NPC MOVEMENT
-  npcs.forEach(n=>{
-    n.position.x += (Math.random()-0.5)*0.05;
-    n.position.z += (Math.random()-0.5)*0.05;
-  });
-
-  // MISSION CHECK
-  const dist = camera.position.distanceTo(target.position);
-  if(dist < 2){
-    alert("Mission complete!");
-    target.position.set(
-      Math.random()*50-25,
-      1,
-      Math.random()*50-25
-    );
+  // MISSION
+  if(camera.position.distanceTo(target.position) < 2){
+    alert("Mission Complete!");
+    target.position.set(Math.random()*50-25,1,Math.random()*50-25);
   }
 
   renderer.render(scene, camera);
