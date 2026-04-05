@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Flash Speed Game</title>
+<title>Flash Game</title>
 <style>
 body { margin:0; overflow:hidden; background:black; }
 #ui {
@@ -18,9 +18,8 @@ body { margin:0; overflow:hidden; background:black; }
 
 <div id="ui">
 ⚡ Flash Mode<br>
-WASD move | Shift = toggle speed<br>
-Speed: <span id="mode">OFF</span><br>
-Score: <span id="score">0</span>
+WASD move | Shift toggle speed<br>
+Click to lock mouse
 </div>
 
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -29,105 +28,42 @@ Score: <span id="score">0</span>
 
 // SCENE
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
 
 // CAMERA
 const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+camera.position.set(0,5,10); // 🔥 IMPORTANT
 
 // RENDERER
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const renderer = new THREE.WebGLRenderer();
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// LIGHT
-scene.add(new THREE.HemisphereLight(0xffffff,0x444444,1));
+// 🔥 STRONG LIGHT (FIX)
+const light = new THREE.DirectionalLight(0xffffff, 2);
+light.position.set(5,10,5);
+scene.add(light);
 
-// GROUND
+// 🔥 ADD AMBIENT LIGHT
+scene.add(new THREE.AmbientLight(0xffffff, 1));
+
+// GROUND (VISIBLE MATERIAL)
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(200,200),
-  new THREE.MeshStandardMaterial({color:0x1a1a2e})
+  new THREE.PlaneGeometry(100,100),
+  new THREE.MeshBasicMaterial({color:0x333333})
 );
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
 
-// 🧍 PLAYER
-const player = new THREE.Group();
-
-const body = new THREE.Mesh(
-  new THREE.CapsuleGeometry(0.5,1.5),
-  new THREE.MeshStandardMaterial({
-    color:0xffff00,
-    emissive:0xffaa00,
-    emissiveIntensity:1.5
-  })
+// PLAYER (BRIGHT MATERIAL)
+const player = new THREE.Mesh(
+  new THREE.BoxGeometry(1,2,1),
+  new THREE.MeshBasicMaterial({color:0xffff00})
 );
-body.position.y = 1;
-player.add(body);
-
+player.position.y = 1;
 scene.add(player);
-
-// ORBS
-const orbs = [];
-for(let i=0;i<10;i++){
-  const orb = new THREE.Mesh(
-    new THREE.SphereGeometry(0.5),
-    new THREE.MeshBasicMaterial({color:0x00ffff})
-  );
-  respawnOrb(orb);
-  scene.add(orb);
-  orbs.push(orb);
-}
-
-// ⚡ TRAIL
-const trailMaterial = new THREE.LineBasicMaterial({
-  color:0xffff00,
-  transparent:true,
-  opacity:0.9
-});
-
-const trailPoints = [];
-const trailMax = 40;
-
-let trailLine = new THREE.Line(
-  new THREE.BufferGeometry(),
-  trailMaterial
-);
-scene.add(trailLine);
-
-// SCORE
-let score = 0;
-function updateScore(){
-  document.getElementById("score").innerText = score;
-}
-
-// RESPAWN
-function respawnOrb(o){
-  o.position.set(
-    Math.random()*50-25,
-    1,
-    Math.random()*50-25
-  );
-}
-
-// INPUT
-let keys = {};
-let sprinting = false;
-
-document.addEventListener("keydown", e=>{
-  keys[e.key] = true;
-
-  if(e.key === "Shift"){
-    sprinting = !sprinting;
-  }
-});
-
-document.addEventListener("keyup", e=>{
-  keys[e.key] = false;
-});
 
 // CAMERA ROTATION
 let yaw = 0;
-let hue = 0;
 
 document.addEventListener("click", ()=>{
   document.body.requestPointerLock();
@@ -139,13 +75,27 @@ document.addEventListener("mousemove", e=>{
   }
 });
 
+// INPUT
+let keys = {};
+let sprinting = false;
+
+document.addEventListener("keydown", e=>{
+  keys[e.key] = true;
+  if(e.key === "Shift"){
+    sprinting = !sprinting;
+  }
+});
+
+document.addEventListener("keyup", e=>{
+  keys[e.key] = false;
+});
+
 // LOOP
 function animate(){
   requestAnimationFrame(animate);
 
-  let speed = sprinting ? 0.5 : 0.15;
+  let speed = sprinting ? 0.4 : 0.15;
 
-  // 🔥 FIXED DIRECTION
   const dir = new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
   const right = new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
 
@@ -159,67 +109,19 @@ function animate(){
   move.normalize().multiplyScalar(speed);
   player.position.add(move);
 
-  // PLAYER ROTATE
-  if(move.length()>0){
-    player.rotation.y = Math.atan2(move.x, move.z);
-  }
-
-  // ⚡ COLOR SHIFT WHEN SPRINTING
-  if(sprinting){
-    hue += 0.02;
-    const color = new THREE.Color().setHSL(hue % 1, 1, 0.5);
-    trailMaterial.color = color;
-    body.material.emissive = color;
-  } else {
-    trailMaterial.color.set(0xffff00);
-    body.material.emissive.set(0xffaa00);
-  }
-
-  // ⚡ TRAIL
-  if(move.length() > 0.05){
-    trailPoints.push(player.position.clone());
-    if(trailPoints.length > trailMax){
-      trailPoints.shift();
-    }
-
-    const geometry = new THREE.BufferGeometry().setFromPoints(trailPoints);
-    trailLine.geometry.dispose();
-    trailLine.geometry = geometry;
-  }
-
   // CAMERA FOLLOW
-  const camOffset = new THREE.Vector3(
-    Math.sin(yaw)*6,
-    4,
-    Math.cos(yaw)*6
+  camera.position.set(
+    player.position.x + Math.sin(yaw)*6,
+    player.position.y + 4,
+    player.position.z + Math.cos(yaw)*6
   );
 
-  camera.position.copy(player.position).add(camOffset);
   camera.lookAt(player.position);
-
-  // 🎯 ORB COLLECTION
-  orbs.forEach(o=>{
-    if(player.position.distanceTo(o.position) < 1.5){
-      score++;
-      updateScore();
-      respawnOrb(o);
-    }
-  });
-
-  // UI UPDATE
-  document.getElementById("mode").innerText = sprinting ? "ON" : "OFF";
 
   renderer.render(scene, camera);
 }
 
 animate();
-
-// RESIZE
-window.addEventListener("resize", ()=>{
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
 
 </script>
 
