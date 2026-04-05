@@ -15,6 +15,10 @@ body{margin:0;font-family:Arial;background:#020617;color:white;display:flex;}
 
 input,button{padding:10px;margin:5px;border-radius:8px;border:none;}
 button{background:#22c55e;cursor:pointer;}
+
+#coins{
+  transition: all 0.2s ease;
+}
 </style>
 </head>
 
@@ -89,21 +93,33 @@ window.showGames=()=>{hideAll();el("games").style.display="block";}
 window.showLogin=()=>{hideAll();el("login").style.display="block";}
 window.showSignup=()=>{hideAll();el("signup").style.display="block";}
 
+// ANIMATION
+function animateCoins(){
+  const c = el("coins");
+  c.style.transform = "scale(1.3)";
+  c.style.color = "#22c55e";
+
+  setTimeout(()=>{
+    c.style.transform = "scale(1)";
+    c.style.color = "white";
+  },200);
+}
+
+// UI
+function updateUI(){
+  el("coins").innerText = coins;
+}
+
 // SIGNUP
 window.signupUser=async()=>{
   const u=el("username").value;
   const p=el("newPassword").value;
 
-  console.log("Signup:", u);
-
   const {data,error}=await supabase.auth.signUp({
     email:fakeEmail(u),password:p
   });
 
-  if(error){
-    alert("SIGNUP ERROR: " + error.message);
-    return;
-  }
+  if(error){alert("SIGNUP ERROR: "+error.message);return;}
 
   const { error: insertError } = await supabase.from("users").insert({
     id:data.user.id,
@@ -114,71 +130,42 @@ window.signupUser=async()=>{
   });
 
   if(insertError){
-    alert("INSERT ERROR: " + insertError.message);
-    console.log(insertError);
+    alert("INSERT ERROR: "+insertError.message);
     return;
   }
 
   alert("Account created");
 };
 
-// LOGIN (WITH DEBUG)
-window.loginUser = async () => {
-  const u = el("loginUsername").value;
-  const p = el("password").value;
+// LOGIN
+window.loginUser=async()=>{
+  const u=el("loginUsername").value;
+  const p=el("password").value;
 
-  console.log("Logging in:", u);
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: fakeEmail(u),
-    password: p
+  const {data,error}=await supabase.auth.signInWithPassword({
+    email:fakeEmail(u),password:p
   });
 
-  if (error) {
-    alert("LOGIN ERROR: " + error.message);
-    console.log(error);
-    return;
-  }
+  if(error){alert("LOGIN ERROR: "+error.message);return;}
 
-  console.log("Logged in:", data);
+  user=data.user;
 
-  user = data.user;
+  const {data:rows}=await supabase.from("users").select("*").eq("id",user.id);
+  const me=rows[0];
 
-  const { data: rows, error: rowError } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id);
+  if(me.banned){alert("You are banned");return;}
 
-  if (rowError || !rows || rows.length === 0) {
-    alert("User row not found in table");
-    console.log(rowError);
-    return;
-  }
+  coins=me.coins||0;
+  isAdmin=me.is_admin;
 
-  const me = rows[0];
-
-  if (me.banned) {
-    alert("You are banned");
-    return;
-  }
-
-  coins = me.coins || 0;
-  isAdmin = me.is_admin;
-
-  if (isAdmin) {
-    el("adminPanel").style.display = "block";
+  if(isAdmin){
+    el("adminPanel").style.display="block";
     loadUsers();
   }
 
   updateUI();
-  alert("Login successful");
   showDashboard();
 };
-
-// UI
-function updateUI(){
-  el("coins").innerText=coins;
-}
 
 // ADMIN
 async function loadUsers(){
@@ -202,8 +189,18 @@ async function loadUsers(){
 
 window.setCoins=async(id)=>{
   if(!isAdmin)return;
+
   const v=parseFloat(el("c-"+id).value);
+  if(isNaN(v)) return;
+
   await supabase.from("users").update({coins:v}).eq("id",id);
+
+  if(user && id===user.id){
+    coins=v;
+    updateUI();
+    animateCoins();
+  }
+
   loadUsers();
 };
 
@@ -223,11 +220,29 @@ window.openGame=async()=>{
 
   coins-=25;
   updateUI();
+  animateCoins();
 
   await supabase.from("users").update({coins}).eq("id",user.id);
 
   window.open("https://epsteinclicker.github.io/","_blank");
 };
+
+// 🔥 LIVE UPDATES
+supabase
+  .channel('coins-changes')
+  .on(
+    'postgres_changes',
+    { event:'UPDATE', schema:'public', table:'users' },
+    payload=>{
+      if(user && payload.new.id===user.id){
+        coins = payload.new.coins;
+        updateUI();
+        animateCoins();
+      }
+    }
+  )
+  .subscribe();
+
 </script>
 
 </body>
