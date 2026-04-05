@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Flash Perfect Lightning</title>
+<title>Flash Final Polish</title>
 <style>
 body { margin:0; overflow:hidden; background:black; }
 #ui {
@@ -26,7 +26,7 @@ body { margin:0; overflow:hidden; background:black; }
 <body>
 
 <div id="ui">
-⚡ Flash Perfect Lightning<br>
+⚡ Flash Final Polish<br>
 WASD move | Shift toggle speed<br>
 F = Dash<br>
 Speed: <span id="mode">OFF</span>
@@ -39,7 +39,7 @@ Speed: <span id="mode">OFF</span>
 <script>
 const scene = new THREE.Scene();
 
-const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
 camera.position.set(0,5,10);
 
 const renderer = new THREE.WebGLRenderer();
@@ -123,71 +123,78 @@ function createShockwave(){
   shockwaves.push({mesh:wave, life:1, scale:1});
 }
 
-// ⚡ LIGHTNING SYSTEM
+// ⚡ LIGHTNING
 let lightningTrail = [];
+let lastPos = new THREE.Vector3();
 
 function createLightning(){
   const points = [];
+  const start = lastPos.clone();
+  const end = player.position.clone();
 
-  const dir = new THREE.Vector3(
-    -Math.sin(yaw),
-    0,
-    -Math.cos(yaw)
-  );
+  for(let i=0;i<=10;i++){
+    const t = i/10;
 
-  const start = player.position.clone();
+    const base = start.clone().lerp(end, t);
 
-  for(let i=0;i<=12;i++){
-    const t = i/12;
-
-    const base = start.clone().add(
-      dir.clone().multiplyScalar(-t*3)
-    );
-
-    const offset = Math.sin(t*Math.PI*4)*0.25;
+    const offset = Math.sin(t*Math.PI*4)*0.2;
 
     base.x += offset;
-    base.y += Math.sin(t*Math.PI*2)*0.15;
+    base.y += Math.sin(t*Math.PI*2)*0.1;
     base.z += offset*0.5;
 
     points.push(base);
   }
 
-  // 🔥 SMOOTH CURVE
   const curve = new THREE.CatmullRomCurve3(points);
-  const smoothPoints = curve.getPoints(20);
+  const smooth = curve.getPoints(20);
 
-  const geo = new THREE.BufferGeometry().setFromPoints(smoothPoints);
+  const geo = new THREE.BufferGeometry().setFromPoints(smooth);
 
-  // CORE
   const core = new THREE.Line(geo, new THREE.LineBasicMaterial({
     color:0xffffff,
     transparent:true,
     opacity:1
   }));
-  scene.add(core);
 
-  // INNER GLOW
-  const innerGlow = new THREE.Line(geo, new THREE.LineBasicMaterial({
+  const glow = new THREE.Line(geo, new THREE.LineBasicMaterial({
     color:0x66ccff,
     transparent:true,
-    opacity:0.7
+    opacity:0.6
   }));
-  innerGlow.scale.set(1.2,1.2,1.2);
-  scene.add(innerGlow);
 
-  // OUTER GLOW
-  const outerGlow = new THREE.Line(geo, new THREE.LineBasicMaterial({
-    color: new THREE.Color().setHSL(Math.random(),1,0.6),
-    transparent:true,
-    opacity:0.4
-  }));
-  outerGlow.scale.set(1.6,1.6,1.6);
-  scene.add(outerGlow);
+  glow.scale.set(1.4,1.4,1.4);
+
+  scene.add(core);
+  scene.add(glow);
 
   lightningTrail.push({mesh:core, life:1});
-  lightningTrail.push({mesh:innerGlow, life:1});
-  lightningTrail.push({mesh:outerGlow, life:1});
+  lightningTrail.push({mesh:glow, life:1});
+}
+
+// ⚡ SPARKS
+let sparks = [];
+
+function createSpark(){
+  const s = new THREE.Mesh(
+    new THREE.SphereGeometry(0.08),
+    new THREE.MeshBasicMaterial({color:0x88ccff, transparent:true, opacity:1})
+  );
+
+  s.position.copy(player.position);
+  s.position.y = 0.1;
+
+  scene.add(s);
+
+  sparks.push({
+    mesh:s,
+    velocity:new THREE.Vector3(
+      (Math.random()-0.5)*0.3,
+      Math.random()*0.2,
+      (Math.random()-0.5)*0.3
+    ),
+    life:1
+  });
 }
 
 // FLASH
@@ -198,8 +205,13 @@ function flash(){
 }
 
 // LOOP
+let lastMoveDir = new THREE.Vector3();
+let targetFov = 75;
+
 function animate(){
   requestAnimationFrame(animate);
+
+  lastPos.copy(player.position);
 
   let speed = sprinting ? 0.4 : 0.15;
 
@@ -220,9 +232,18 @@ function animate(){
     player.rotation.y = Math.atan2(move.x, move.z);
   }
 
-  // ⚡ CREATE LIGHTNING (CONTROLLED)
-  if(sprinting && move.length()>0.05 && Math.random()<0.5){
+  // ⚡ LIGHTNING
+  if(sprinting && move.length()>0.05){
     createLightning();
+  }
+
+  // TURN SPARKS
+  let currentDir = move.clone().normalize();
+  if(currentDir.length()>0){
+    if(currentDir.dot(lastMoveDir) < 0.7){
+      for(let i=0;i<5;i++) createSpark();
+    }
+    lastMoveDir.copy(currentDir);
   }
 
   // UPDATE LIGHTNING
@@ -237,10 +258,22 @@ function animate(){
     }
   }
 
-  // CLEAR WHEN OFF
   if(!sprinting){
     lightningTrail.forEach(l=>scene.remove(l.mesh));
     lightningTrail = [];
+  }
+
+  // UPDATE SPARKS
+  for(let i=sparks.length-1;i>=0;i--){
+    let s = sparks[i];
+    s.life -= 0.04;
+    s.mesh.material.opacity = s.life;
+    s.mesh.position.add(s.velocity);
+
+    if(s.life <= 0){
+      scene.remove(s.mesh);
+      sparks.splice(i,1);
+    }
   }
 
   // UPDATE SHOCKWAVE
@@ -258,6 +291,11 @@ function animate(){
     }
   }
 
+  // FOV EFFECT
+  targetFov = sprinting ? 90 : 75;
+  camera.fov += (targetFov - camera.fov)*0.1;
+  camera.updateProjectionMatrix();
+
   // CAMERA
   camera.position.set(
     player.position.x + Math.sin(yaw)*6,
@@ -274,11 +312,10 @@ function animate(){
 
 animate();
 
-// RESIZE
 window.addEventListener("resize", ()=>{
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(innerWidth, innerHeight);
 });
 </script>
 
