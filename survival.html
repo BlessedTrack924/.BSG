@@ -18,8 +18,8 @@ body { margin:0; overflow:hidden; background:black; }
 
 <div id="ui">
 ⚡ Flash Mode<br>
-WASD move | Shift = speed burst<br>
-Collect the orbs<br>
+WASD move | Shift = speed<br>
+Mouse = rotate<br>
 Score: <span id="score">0</span>
 </div>
 
@@ -50,12 +50,16 @@ const ground = new THREE.Mesh(
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
 
-// PLAYER
-const player = new THREE.Mesh(
-  new THREE.BoxGeometry(1,2,1),
+// 🧍 CHARACTER (BETTER THAN CUBE)
+const player = new THREE.Group();
+
+const body = new THREE.Mesh(
+  new THREE.CapsuleGeometry(0.5,1.5),
   new THREE.MeshStandardMaterial({color:0xffff00})
 );
-player.position.y = 1;
+body.position.y = 1;
+player.add(body);
+
 scene.add(player);
 
 // ORBS
@@ -70,24 +74,16 @@ for(let i=0;i<10;i++){
   orbs.push(orb);
 }
 
-// LIGHTNING TRAIL
-const trail = [];
+// ⚡ LIGHTNING TRAIL (LINE BASED)
+const trailMaterial = new THREE.LineBasicMaterial({color:0x00ffff});
+const trailPoints = [];
+const trailMax = 40;
 
-function createTrail(){
-  const part = new THREE.Mesh(
-    new THREE.SphereGeometry(0.3),
-    new THREE.MeshBasicMaterial({
-      color:0x00ffff,
-      transparent:true,
-      opacity:0.8
-    })
-  );
-
-  part.position.copy(player.position);
-  scene.add(part);
-
-  trail.push({mesh:part, life:1});
-}
+let trailLine = new THREE.Line(
+  new THREE.BufferGeometry(),
+  trailMaterial
+);
+scene.add(trailLine);
 
 // SCORE
 let score = 0;
@@ -126,10 +122,10 @@ document.addEventListener("mousemove", e=>{
 function animate(){
   requestAnimationFrame(animate);
 
-  let baseSpeed = 0.15;
-  let speed = keys["Shift"] ? 0.5 : baseSpeed;
+  let speed = keys["Shift"] ? 0.5 : 0.15;
 
-  const dir = new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  // 🔥 FIXED DIRECTION
+  const dir = new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
   const right = new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
 
   let move = new THREE.Vector3();
@@ -142,25 +138,21 @@ function animate(){
   move.normalize().multiplyScalar(speed);
   player.position.add(move);
 
-  // TRAIL WHEN MOVING FAST
-  if(move.length() > 0.05){
-    createTrail();
-  }
-
-  // FADE TRAIL
-  for(let i=trail.length-1;i>=0;i--){
-    trail[i].life -= 0.03;
-    trail[i].mesh.material.opacity = trail[i].life;
-
-    if(trail[i].life <= 0){
-      scene.remove(trail[i].mesh);
-      trail.splice(i,1);
-    }
-  }
-
   // PLAYER ROTATE
   if(move.length()>0){
     player.rotation.y = Math.atan2(move.x, move.z);
+  }
+
+  // ⚡ TRAIL UPDATE
+  if(move.length() > 0.05){
+    trailPoints.push(player.position.clone());
+    if(trailPoints.length > trailMax){
+      trailPoints.shift();
+    }
+
+    const geometry = new THREE.BufferGeometry().setFromPoints(trailPoints);
+    trailLine.geometry.dispose();
+    trailLine.geometry = geometry;
   }
 
   // CAMERA FOLLOW
