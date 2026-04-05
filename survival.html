@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Third Person Game</title>
+<title>Flash Speed Game</title>
 <style>
 body { margin:0; overflow:hidden; background:black; }
 #ui {
@@ -17,9 +17,10 @@ body { margin:0; overflow:hidden; background:black; }
 <body>
 
 <div id="ui">
-Click screen<br>
-WASD move | Shift sprint | Space jump<br>
-Move mouse to rotate camera
+⚡ Flash Mode<br>
+WASD move | Shift = speed burst<br>
+Collect the orbs<br>
+Score: <span id="score">0</span>
 </div>
 
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -28,7 +29,7 @@ Move mouse to rotate camera
 
 // SCENE
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x111111);
+scene.background = new THREE.Color(0x000000);
 
 // CAMERA
 const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
@@ -39,13 +40,12 @@ renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // LIGHT
-const light = new THREE.HemisphereLight(0xffffff,0x444444,1);
-scene.add(light);
+scene.add(new THREE.HemisphereLight(0xffffff,0x444444,1));
 
 // GROUND
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(200,200),
-  new THREE.MeshStandardMaterial({color:0x1a1a1a})
+  new THREE.MeshStandardMaterial({color:0x111111})
 );
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
@@ -53,39 +53,56 @@ scene.add(ground);
 // PLAYER
 const player = new THREE.Mesh(
   new THREE.BoxGeometry(1,2,1),
-  new THREE.MeshStandardMaterial({color:0x22c55e})
+  new THREE.MeshStandardMaterial({color:0xffff00})
 );
 player.position.y = 1;
 scene.add(player);
 
-// BUILDINGS
-const buildings = [];
-
-for(let i=0;i<40;i++){
-  const h = Math.random()*10+3;
-
-  const b = new THREE.Mesh(
-    new THREE.BoxGeometry(3,h,3),
-    new THREE.MeshStandardMaterial({color:0x555555})
+// ORBS
+const orbs = [];
+for(let i=0;i<10;i++){
+  const orb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5),
+    new THREE.MeshBasicMaterial({color:0x00ffff})
   );
-
-  b.position.set(
-    Math.random()*100-50,
-    h/2,
-    Math.random()*100-50
-  );
-
-  scene.add(b);
-  buildings.push(b);
+  respawnOrb(orb);
+  scene.add(orb);
+  orbs.push(orb);
 }
 
-// TARGET
-const target = new THREE.Mesh(
-  new THREE.BoxGeometry(1,1,1),
-  new THREE.MeshStandardMaterial({color:0xff0000})
-);
-target.position.set(10,1,-10);
-scene.add(target);
+// LIGHTNING TRAIL
+const trail = [];
+
+function createTrail(){
+  const part = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3),
+    new THREE.MeshBasicMaterial({
+      color:0x00ffff,
+      transparent:true,
+      opacity:0.8
+    })
+  );
+
+  part.position.copy(player.position);
+  scene.add(part);
+
+  trail.push({mesh:part, life:1});
+}
+
+// SCORE
+let score = 0;
+function updateScore(){
+  document.getElementById("score").innerText = score;
+}
+
+// RESPAWN
+function respawnOrb(o){
+  o.position.set(
+    Math.random()*50-25,
+    1,
+    Math.random()*50-25
+  );
+}
 
 // INPUT
 let keys = {};
@@ -94,7 +111,6 @@ document.addEventListener("keyup", e=>keys[e.key]=false);
 
 // CAMERA ROTATION
 let yaw = 0;
-let pitch = 0;
 
 document.addEventListener("click", ()=>{
   document.body.requestPointerLock();
@@ -103,47 +119,18 @@ document.addEventListener("click", ()=>{
 document.addEventListener("mousemove", e=>{
   if(document.pointerLockElement === document.body){
     yaw -= e.movementX * 0.002;
-    pitch -= e.movementY * 0.002;
-
-    pitch = Math.max(-1.2, Math.min(1.2, pitch));
   }
 });
-
-// PHYSICS
-let velocityY = 0;
-let onGround = true;
-
-// COLLISION
-function checkCollision(pos){
-  for(let b of buildings){
-    if(
-      Math.abs(pos.x - b.position.x) < 2 &&
-      Math.abs(pos.z - b.position.z) < 2
-    ){
-      return true;
-    }
-  }
-  return false;
-}
 
 // LOOP
 function animate(){
   requestAnimationFrame(animate);
 
-  let speed = keys["Shift"] ? 0.2 : 0.1;
+  let baseSpeed = 0.15;
+  let speed = keys["Shift"] ? 0.5 : baseSpeed;
 
-  // DIRECTION BASED ON CAMERA
-  const dir = new THREE.Vector3(
-    Math.sin(yaw),
-    0,
-    Math.cos(yaw)
-  );
-
-  const right = new THREE.Vector3(
-    Math.cos(yaw),
-    0,
-    -Math.sin(yaw)
-  );
+  const dir = new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  const right = new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
 
   let move = new THREE.Vector3();
 
@@ -153,52 +140,46 @@ function animate(){
   if(keys["d"]) move.add(right);
 
   move.normalize().multiplyScalar(speed);
+  player.position.add(move);
 
-  let newPos = player.position.clone().add(move);
-
-  if(!checkCollision(newPos)){
-    player.position.copy(newPos);
+  // TRAIL WHEN MOVING FAST
+  if(move.length() > 0.05){
+    createTrail();
   }
 
-  // PLAYER ROTATION
-  if(move.length() > 0){
+  // FADE TRAIL
+  for(let i=trail.length-1;i>=0;i--){
+    trail[i].life -= 0.03;
+    trail[i].mesh.material.opacity = trail[i].life;
+
+    if(trail[i].life <= 0){
+      scene.remove(trail[i].mesh);
+      trail.splice(i,1);
+    }
+  }
+
+  // PLAYER ROTATE
+  if(move.length()>0){
     player.rotation.y = Math.atan2(move.x, move.z);
-  }
-
-  // GRAVITY
-  velocityY -= 0.01;
-  player.position.y += velocityY;
-
-  if(player.position.y <= 1){
-    player.position.y = 1;
-    velocityY = 0;
-    onGround = true;
-  }
-
-  if(keys[" "] && onGround){
-    velocityY = 0.2;
-    onGround = false;
   }
 
   // CAMERA FOLLOW
   const camOffset = new THREE.Vector3(
-    Math.sin(yaw)*5,
-    3 + pitch*2,
-    Math.cos(yaw)*5
+    Math.sin(yaw)*6,
+    4,
+    Math.cos(yaw)*6
   );
-
   camera.position.copy(player.position).add(camOffset);
   camera.lookAt(player.position);
 
-  // MISSION
-  if(player.position.distanceTo(target.position) < 2){
-    alert("Mission complete!");
-    target.position.set(
-      Math.random()*50-25,
-      1,
-      Math.random()*50-25
-    );
-  }
+  // ORB COLLECTION
+  orbs.forEach(o=>{
+    if(player.position.distanceTo(o.position) < 1.5){
+      score++;
+      updateScore();
+      respawnOrb(o);
+    }
+  });
 
   renderer.render(scene, camera);
 }
