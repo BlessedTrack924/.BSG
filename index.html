@@ -1,426 +1,204 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Big Steins Movies and Games</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Big Steins Games</title>
 
-  <style>
-    body{
-      margin:0;
-      font-family:Arial,sans-serif;
-      background:#020617;
-      color:white;
-      display:flex;
-    }
+<style>
+body{margin:0;font-family:Arial;background:#020617;color:white;display:flex;}
+.sidebar{width:220px;background:#020617;border-right:1px solid #1e293b;padding:20px;height:100vh;}
+.sidebar button{width:100%;margin-top:10px;padding:10px;border:none;border-radius:8px;background:#22c55e;color:black;font-weight:bold;cursor:pointer;}
+.main{flex:1;padding:20px;}
 
-    .sidebar{
-      width:220px;
-      background:#020617;
-      border-right:1px solid #1e293b;
-      padding:20px;
-      height:100vh;
-      box-sizing:border-box;
-    }
+.card{background:#0f172a;padding:15px;margin:10px 0;border-radius:10px;}
+.userBox{background:#1e293b;padding:10px;margin:10px 0;border-radius:10px;}
 
-    .sidebar h2{
-      color:#22c55e;
-      margin-top:0;
-    }
-
-    .sidebar button{
-      width:100%;
-      margin-top:10px;
-      padding:10px;
-      border:none;
-      border-radius:8px;
-      background:#22c55e;
-      color:black;
-      font-weight:bold;
-      cursor:pointer;
-    }
-
-    .main{
-      flex:1;
-      padding:20px;
-      box-sizing:border-box;
-      overflow:auto;
-    }
-
-    .logo-bar{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      margin-bottom:20px;
-    }
-
-    .logo{
-      width:40px;
-      height:40px;
-      border-radius:50%;
-    }
-
-    .card{
-      background:#0f172a;
-      padding:15px;
-      margin:10px 0;
-      border-radius:10px;
-    }
-
-    .userBox{
-      background:#1e293b;
-      padding:10px;
-      margin:10px 0;
-      border-radius:10px;
-    }
-
-    input, button{
-      padding:10px;
-      margin:5px;
-      border-radius:8px;
-      border:none;
-      box-sizing:border-box;
-    }
-
-    input{
-      background:white;
-      color:black;
-    }
-
-    .small{
-      opacity:.75;
-      font-size:14px;
-    }
-  </style>
+input,button{padding:10px;margin:5px;border-radius:8px;border:none;}
+button{background:#22c55e;cursor:pointer;}
+</style>
 </head>
+
 <body>
 
-  <div class="sidebar">
-    <h2>BSMG</h2>
-    <button onclick="showDashboard()">Dashboard</button>
-    <button onclick="showGames()">Games</button>
-    <button onclick="showSettings()">Settings</button>
-    <button onclick="showLogin()">Login</button>
-    <button onclick="showSignup()">Signup</button>
-    <button onclick="logoutUser()">Logout</button>
+<div class="sidebar">
+  <h2>BSMG</h2>
+  <button onclick="showDashboard()">Dashboard</button>
+  <button onclick="showGames()">Games</button>
+  <button onclick="showLogin()">Login</button>
+  <button onclick="showSignup()">Signup</button>
+</div>
+
+<div class="main">
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <h1>Big Steins Games</h1>
+  <div class="card">
+    🪙 Coins: <span id="coins">0</span>
   </div>
 
-  <div class="main">
-
-    <!-- DASHBOARD -->
-    <div id="dashboard">
-      <div class="logo-bar">
-        <img src="BSC.png" class="logo" alt="Logo">
-        <h1>Big Steins Movies and Games</h1>
-      </div>
-
-      <div class="card">
-        <strong>Coins:</strong> <span id="coins">0</span>
-      </div>
-
-      <!-- ADMIN DASHBOARD -->
-      <div id="adminPanel" class="card" style="display:none;">
-        <h3>Admin Dashboard</h3>
-        <div id="adminUsers"></div>
-      </div>
-    </div>
-
-    <!-- GAMES -->
-    <div id="games" style="display:none;">
-      <div class="card">
-        <h3>Clicker Game</h3>
-        <p class="small">Costs 25 coins</p>
-        <button onclick="openClickerGame()">Play 🎮</button>
-        <p id="gameMessage"></p>
-      </div>
-
-      <div class="card">
-        <h3>Video Hub</h3>
-        <button onclick="window.open('videos.html','_blank')">Open Video Hub 🎬</button>
-      </div>
-    </div>
-
-    <!-- SETTINGS -->
-    <div id="settings" style="display:none;">
-      <div class="card">
-        <h3>Change Username</h3>
-        <input id="newUsername" placeholder="New username">
-        <button onclick="changeUsername()">Update</button>
-      </div>
-
-      <div class="card">
-        <h3>Change Password</h3>
-        <input id="newPass" type="password" placeholder="New password">
-        <button onclick="changePassword()">Update</button>
-      </div>
-
-      <p id="settingsMessage"></p>
-    </div>
-
-    <!-- LOGIN -->
-    <div id="login" style="display:none;" class="card">
-      <input id="loginUsername" placeholder="Username">
-      <input id="password" type="password" placeholder="Password">
-      <button onclick="loginUser()">Login</button>
-    </div>
-
-    <!-- SIGNUP -->
-    <div id="signup" style="display:none;" class="card">
-      <input id="username" placeholder="Username">
-      <input id="newPassword" type="password" placeholder="Password">
-      <button onclick="signupUser()">Signup</button>
-    </div>
-
+  <div id="adminPanel" class="card" style="display:none;">
+    <h3>Admin Dashboard</h3>
+    <div id="adminUsers"></div>
   </div>
+</div>
 
-  <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+<!-- GAMES -->
+<div id="games" style="display:none;">
+  <div class="card">
+    <h3>Clicker Game</h3>
+    <p>Costs 25 coins</p>
+    <button onclick="openGame()">Play 🎮</button>
+    <p id="gameMessage"></p>
+  </div>
+</div>
 
-    const supabase = createClient(
-      "YOUR_SUPABASE_URL_HERE",
-      "YOUR_SUPABASE_ANON_KEY_HERE"
-    );
+<!-- LOGIN -->
+<div id="login" style="display:none;" class="card">
+  <input id="loginUsername" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="loginUser()">Login</button>
+</div>
 
-    let user = null;
-    let coins = 0;
-    let isAdmin = false;
+<!-- SIGNUP -->
+<div id="signup" style="display:none;" class="card">
+  <input id="username" placeholder="Username">
+  <input id="newPassword" type="password" placeholder="Password">
+  <button onclick="signupUser()">Signup</button>
+</div>
 
-    function el(id){
-      return document.getElementById(id);
-    }
+</div>
 
-    function fakeEmail(username){
-      return username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_") + "@bsmg.local";
-    }
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    function hideAll(){
-      ["dashboard","games","settings","login","signup"].forEach(id=>{
-        el(id).style.display = "none";
-      });
-    }
+const supabase = createClient(
+  "https://wcexpxchtcsalxbjizmn.supabase.co",
+  "sb_publishable_i7VgJlJ5CuO-LblxQ67ItQ_kR9KGkat"
+);
 
-    window.showDashboard = () => {
-      hideAll();
-      el("dashboard").style.display = "block";
-    };
+let user=null, coins=0, isAdmin=false;
 
-    window.showGames = () => {
-      hideAll();
-      el("games").style.display = "block";
-    };
+function el(id){return document.getElementById(id);}
+function fakeEmail(u){return u.toLowerCase()+"@bsmg.local";}
 
-    window.showSettings = () => {
-      hideAll();
-      el("settings").style.display = "block";
-    };
+// NAV
+function hideAll(){
+  ["dashboard","games","login","signup"].forEach(id=>{
+    el(id).style.display="none";
+  });
+}
+window.showDashboard=()=>{hideAll();el("dashboard").style.display="block";}
+window.showGames=()=>{hideAll();el("games").style.display="block";}
+window.showLogin=()=>{hideAll();el("login").style.display="block";}
+window.showSignup=()=>{hideAll();el("signup").style.display="block";}
 
-    window.showLogin = () => {
-      hideAll();
-      el("login").style.display = "block";
-    };
+// SIGNUP
+window.signupUser=async()=>{
+  const u=el("username").value;
+  const p=el("newPassword").value;
 
-    window.showSignup = () => {
-      hideAll();
-      el("signup").style.display = "block";
-    };
+  const {data,error}=await supabase.auth.signUp({
+    email:fakeEmail(u),password:p
+  });
 
-    window.logoutUser = async () => {
-      await supabase.auth.signOut();
-      location.reload();
-    };
+  if(error){alert(error.message);return;}
 
-    function updateUI(){
-      el("coins").innerText = coins;
-    }
+  await supabase.from("users").insert({
+    id:data.user.id,
+    username:u,
+    coins:0,
+    is_admin:false,
+    banned:false
+  });
 
-    async function saveCoins(){
-      if(!user) return;
-      await supabase.from("users").update({ coins }).eq("id", user.id);
-    }
+  alert("Account created");
+};
 
-    window.signupUser = async () => {
-      const username = el("username").value.trim();
-      const password = el("newPassword").value;
-      const email = fakeEmail(username);
+// LOGIN
+window.loginUser=async()=>{
+  const u=el("loginUsername").value;
+  const p=el("password").value;
 
-      if(!username || !password){
-        alert("Enter a username and password");
-        return;
-      }
+  const {data,error}=await supabase.auth.signInWithPassword({
+    email:fakeEmail(u),password:p
+  });
 
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password
-      });
+  if(error){alert(error.message);return;}
 
-      if(error){
-        alert(error.message);
-        return;
-      }
+  user=data.user;
 
-      const { error: insertError } = await supabase.from("users").insert({
-        id: data.user.id,
-        username,
-        coins: 0,
-        is_admin: false,
-        banned: false
-      });
+  const {data:rows}=await supabase.from("users").select("*").eq("id",user.id);
+  const me=rows[0];
 
-      if(insertError){
-        alert(insertError.message);
-        return;
-      }
+  if(me.banned){alert("You are banned");return;}
 
-      alert("Account created");
-    };
+  coins=me.coins||0;
+  isAdmin=me.is_admin;
 
-    window.loginUser = async () => {
-      const username = el("loginUsername").value.trim();
-      const password = el("password").value;
-      const email = fakeEmail(username);
+  if(isAdmin){
+    el("adminPanel").style.display="block";
+    loadUsers();
+  }
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+  updateUI();
+  showDashboard();
+};
 
-      if(error){
-        alert(error.message);
-        return;
-      }
+// UI
+function updateUI(){
+  el("coins").innerText=coins;
+}
 
-      user = data.user;
+// ADMIN
+async function loadUsers(){
+  const {data}=await supabase.from("users").select("*");
+  el("adminUsers").innerHTML="";
 
-      const { data: rows, error: rowError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user.id);
+  data.forEach(u=>{
+    const d=document.createElement("div");
+    d.className="userBox";
+    d.innerHTML=`
+      ${u.username} (${u.coins})
+      <input id="c-${u.id}">
+      <button onclick="setCoins('${u.id}')">Set</button>
+      <button onclick="ban('${u.id}',${u.banned})">
+        ${u.banned?"Unban":"Ban"}
+      </button>
+    `;
+    el("adminUsers").appendChild(d);
+  });
+}
 
-      if(rowError || !rows || rows.length === 0){
-        alert("User row not found");
-        return;
-      }
+window.setCoins=async(id)=>{
+  if(!isAdmin)return;
+  const v=parseFloat(el("c-"+id).value);
+  await supabase.from("users").update({coins:v}).eq("id",id);
+  loadUsers();
+};
 
-      const me = rows[0];
+window.ban=async(id,b)=>{
+  if(!isAdmin)return;
+  if(id===user.id){alert("Can't ban yourself");return;}
+  await supabase.from("users").update({banned:!b}).eq("id",id);
+  loadUsers();
+};
 
-      if(me.banned){
-        alert("You are banned");
-        return;
-      }
+// GAME
+window.openGame=async()=>{
+  if(coins<25){
+    el("gameMessage").innerText="Need 25 coins";
+    return;
+  }
 
-      coins = me.coins || 0;
-      isAdmin = !!me.is_admin;
+  coins-=25;
+  updateUI();
 
-      if(isAdmin){
-        el("adminPanel").style.display = "block";
-        loadUsers();
-      } else {
-        el("adminPanel").style.display = "none";
-      }
+  await supabase.from("users").update({coins}).eq("id",user.id);
 
-      updateUI();
-      showDashboard();
-    };
+  window.open("https://epsteinclicker.github.io/","_blank");
+};
+</script>
 
-    async function loadUsers(){
-      const { data, error } = await supabase.from("users").select("*");
-      if(error || !data) return;
-
-      el("adminUsers").innerHTML = "";
-
-      data.forEach(u => {
-        const d = document.createElement("div");
-        d.className = "userBox";
-        d.innerHTML = `
-          <strong>${u.username}</strong><br>
-          Coins: ${u.coins}<br>
-
-          <input id="coins-${u.id}" placeholder="Set coins">
-          <button onclick="setCoins('${u.id}')">Set Coins</button>
-
-          <button onclick="toggleBan('${u.id}', ${u.banned})">
-            ${u.banned ? "Unban" : "Ban"}
-          </button>
-        `;
-        el("adminUsers").appendChild(d);
-      });
-    }
-
-    window.setCoins = async (id) => {
-      if(!isAdmin) return;
-
-      const value = parseFloat(el("coins-" + id).value);
-      if(isNaN(value)) return;
-
-      await supabase.from("users").update({ coins: value }).eq("id", id);
-      loadUsers();
-
-      if(user && id === user.id){
-        coins = value;
-        updateUI();
-      }
-    };
-
-    window.toggleBan = async (id, banned) => {
-      if(!isAdmin) return;
-
-      if(user && id === user.id){
-        alert("You can't ban yourself");
-        return;
-      }
-
-      await supabase.from("users").update({ banned: !banned }).eq("id", id);
-      loadUsers();
-    };
-
-    window.openClickerGame = async () => {
-      const cost = 25;
-
-      if(coins < cost){
-        el("gameMessage").innerText = "Need 25 coins";
-        return;
-      }
-
-      coins -= cost;
-      updateUI();
-      await saveCoins();
-
-      const win = window.open("https://epsteinclicker.github.io/","_blank");
-
-      if(!win){
-        coins += cost;
-        updateUI();
-        await saveCoins();
-        el("gameMessage").innerText = "Allow popups to open the game";
-      }
-    };
-
-    window.changeUsername = async () => {
-      if(!user) return;
-
-      const name = el("newUsername").value.trim();
-      if(!name) return;
-
-      await supabase.from("users").update({ username: name }).eq("id", user.id);
-      el("settingsMessage").innerText = "Username updated";
-    };
-
-    window.changePassword = async () => {
-      if(!user) return;
-
-      const pass = el("newPass").value;
-      if(!pass) return;
-
-      const { error } = await supabase.auth.updateUser({ password: pass });
-
-      if(error){
-        el("settingsMessage").innerText = error.message;
-      } else {
-        el("settingsMessage").innerText = "Password updated";
-      }
-    };
-
-    updateUI();
-    showDashboard();
-  </script>
 </body>
 </html>
