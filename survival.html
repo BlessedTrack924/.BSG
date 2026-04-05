@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Flash Final Polish</title>
+<title>Flash Cinematic Build</title>
 <style>
 body { margin:0; overflow:hidden; background:black; }
 #ui {
@@ -26,7 +26,7 @@ body { margin:0; overflow:hidden; background:black; }
 <body>
 
 <div id="ui">
-⚡ Flash Final Polish<br>
+⚡ Flash Cinematic<br>
 WASD move | Shift toggle speed<br>
 F = Dash<br>
 Speed: <span id="mode">OFF</span>
@@ -51,7 +51,7 @@ scene.add(new THREE.AmbientLight(0xffffff,1));
 // GROUND
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(100,100),
-  new THREE.MeshBasicMaterial({color:0x222244})
+  new THREE.MeshBasicMaterial({color:0x111133})
 );
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
@@ -64,6 +64,28 @@ const player = new THREE.Mesh(
 player.position.y = 1;
 scene.add(player);
 
+// 🌌 AURA
+const aura = new THREE.Mesh(
+  new THREE.SphereGeometry(2,32,32),
+  new THREE.MeshBasicMaterial({
+    color:0x6622ff,
+    transparent:true,
+    opacity:0.1
+  })
+);
+scene.add(aura);
+
+// 🌀 ENERGY RING
+const ringGeo = new THREE.RingGeometry(1.5,2.2,64);
+const ringMat = new THREE.MeshBasicMaterial({
+  color:0x8844ff,
+  transparent:true,
+  opacity:0.5,
+  side:THREE.DoubleSide
+});
+const energyRing = new THREE.Mesh(ringGeo, ringMat);
+scene.add(energyRing);
+
 // INPUT
 let keys = {};
 let sprinting = false;
@@ -71,7 +93,6 @@ let yaw = 0;
 
 document.addEventListener("keydown", e=>{
   keys[e.key.toLowerCase()] = true;
-
   if(e.key === "Shift") sprinting = !sprinting;
   if(e.key.toLowerCase() === "f") dash();
 });
@@ -91,107 +112,84 @@ document.addEventListener("mousemove", e=>{
 });
 
 // 💥 DASH
+let shockwaves = [];
 function dash(){
-  const dir = new THREE.Vector3(
-    -Math.sin(yaw),
-    0,
-    -Math.cos(yaw)
-  ).multiplyScalar(4);
-
+  const dir = new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)).multiplyScalar(4);
   player.position.add(dir);
   createShockwave();
   flash();
 }
 
-// ⚡ SHOCKWAVE
-let shockwaves = [];
-
 function createShockwave(){
   const wave = new THREE.Mesh(
     new THREE.RingGeometry(0.5,1,32),
-    new THREE.MeshBasicMaterial({
-      color:0xffffff,
-      transparent:true,
-      opacity:1,
-      side:THREE.DoubleSide
-    })
+    new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:1,side:THREE.DoubleSide})
   );
   wave.rotation.x = -Math.PI/2;
   wave.position.copy(player.position);
   scene.add(wave);
-
   shockwaves.push({mesh:wave, life:1, scale:1});
 }
 
-// ⚡ LIGHTNING
+// ⚡ WRAP LIGHTNING
 let lightningTrail = [];
-let lastPos = new THREE.Vector3();
-
-function createLightning(){
-  const points = [];
-  const start = lastPos.clone();
-  const end = player.position.clone();
-
-  for(let i=0;i<=10;i++){
-    const t = i/10;
-
-    const base = start.clone().lerp(end, t);
-
-    const offset = Math.sin(t*Math.PI*4)*0.2;
-
-    base.x += offset;
-    base.y += Math.sin(t*Math.PI*2)*0.1;
-    base.z += offset*0.5;
-
-    points.push(base);
-  }
-
-  const curve = new THREE.CatmullRomCurve3(points);
-  const smooth = curve.getPoints(20);
-
-  const geo = new THREE.BufferGeometry().setFromPoints(smooth);
-
-  const core = new THREE.Line(geo, new THREE.LineBasicMaterial({
-    color:0xffffff,
-    transparent:true,
-    opacity:1
-  }));
-
-  const glow = new THREE.Line(geo, new THREE.LineBasicMaterial({
-    color:0x66ccff,
+function wrapLightning(){
+  const geo = new THREE.TorusGeometry(1.2,0.05,8,32);
+  const mat = new THREE.MeshBasicMaterial({
+    color:0xaa66ff,
     transparent:true,
     opacity:0.6
-  }));
+  });
 
-  glow.scale.set(1.4,1.4,1.4);
+  const torus = new THREE.Mesh(geo, mat);
+  torus.position.copy(player.position);
+  torus.rotation.x = Math.random()*Math.PI;
 
-  scene.add(core);
-  scene.add(glow);
-
-  lightningTrail.push({mesh:core, life:1});
-  lightningTrail.push({mesh:glow, life:1});
+  scene.add(torus);
+  lightningTrail.push({mesh:torus, life:0.5});
 }
 
-// ⚡ SPARKS
-let sparks = [];
-
-function createSpark(){
-  const s = new THREE.Mesh(
-    new THREE.SphereGeometry(0.08),
-    new THREE.MeshBasicMaterial({color:0x88ccff, transparent:true, opacity:1})
+// 💨 SPEED TRAIL
+let speedTrail = [];
+function createTrail(){
+  const t = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3,0.6,2,8),
+    new THREE.MeshBasicMaterial({
+      color:0x4488ff,
+      transparent:true,
+      opacity:0.4
+    })
   );
 
-  s.position.copy(player.position);
-  s.position.y = 0.1;
+  t.rotation.x = Math.PI/2;
+  t.position.copy(player.position);
 
-  scene.add(s);
+  scene.add(t);
+  speedTrail.push({mesh:t, life:1});
+}
 
-  sparks.push({
-    mesh:s,
+// ✨ PARTICLES
+let particles = [];
+function createParticle(){
+  const p = new THREE.Mesh(
+    new THREE.SphereGeometry(0.05),
+    new THREE.MeshBasicMaterial({
+      color:0xaa66ff,
+      transparent:true,
+      opacity:1
+    })
+  );
+
+  p.position.copy(player.position);
+
+  scene.add(p);
+
+  particles.push({
+    mesh:p,
     velocity:new THREE.Vector3(
-      (Math.random()-0.5)*0.3,
-      Math.random()*0.2,
-      (Math.random()-0.5)*0.3
+      (Math.random()-0.5)*0.4,
+      Math.random()*0.3,
+      (Math.random()-0.5)*0.4
     ),
     life:1
   });
@@ -205,13 +203,8 @@ function flash(){
 }
 
 // LOOP
-let lastMoveDir = new THREE.Vector3();
-let targetFov = 75;
-
 function animate(){
   requestAnimationFrame(animate);
-
-  lastPos.copy(player.position);
 
   let speed = sprinting ? 0.4 : 0.15;
 
@@ -232,21 +225,55 @@ function animate(){
     player.rotation.y = Math.atan2(move.x, move.z);
   }
 
-  // ⚡ LIGHTNING
+  // 🌌 AURA + RING
+  aura.position.copy(player.position);
+  aura.material.opacity = sprinting ? 0.35 : 0.1;
+
+  const pulse = 1 + Math.sin(Date.now()*0.01)*0.1;
+  aura.scale.set(pulse,pulse,pulse);
+
+  energyRing.position.copy(player.position);
+  energyRing.rotation.y += 0.05;
+  energyRing.rotation.x = Math.PI/2;
+  energyRing.scale.set(pulse,pulse,pulse);
+
+  // ⚡ EFFECTS
   if(sprinting && move.length()>0.05){
-    createLightning();
-  }
+    createTrail();
+    createParticle();
 
-  // TURN SPARKS
-  let currentDir = move.clone().normalize();
-  if(currentDir.length()>0){
-    if(currentDir.dot(lastMoveDir) < 0.7){
-      for(let i=0;i<5;i++) createSpark();
+    if(Math.random()<0.3){
+      wrapLightning();
     }
-    lastMoveDir.copy(currentDir);
   }
 
-  // UPDATE LIGHTNING
+  // 💨 TRAIL UPDATE
+  for(let i=speedTrail.length-1;i>=0;i--){
+    let t = speedTrail[i];
+    t.life -= 0.05;
+    t.mesh.material.opacity = t.life*0.6;
+    t.mesh.scale.z += 0.5;
+
+    if(t.life <= 0){
+      scene.remove(t.mesh);
+      speedTrail.splice(i,1);
+    }
+  }
+
+  // ✨ PARTICLES UPDATE
+  for(let i=particles.length-1;i>=0;i--){
+    let p = particles[i];
+    p.life -= 0.03;
+    p.mesh.material.opacity = p.life;
+    p.mesh.position.add(p.velocity);
+
+    if(p.life <= 0){
+      scene.remove(p.mesh);
+      particles.splice(i,1);
+    }
+  }
+
+  // ⚡ LIGHTNING UPDATE
   for(let i=lightningTrail.length-1;i>=0;i--){
     let l = lightningTrail[i];
     l.life -= 0.05;
@@ -258,25 +285,13 @@ function animate(){
     }
   }
 
+  // 📴 CLEAR WHEN OFF
   if(!sprinting){
     lightningTrail.forEach(l=>scene.remove(l.mesh));
     lightningTrail = [];
   }
 
-  // UPDATE SPARKS
-  for(let i=sparks.length-1;i>=0;i--){
-    let s = sparks[i];
-    s.life -= 0.04;
-    s.mesh.material.opacity = s.life;
-    s.mesh.position.add(s.velocity);
-
-    if(s.life <= 0){
-      scene.remove(s.mesh);
-      sparks.splice(i,1);
-    }
-  }
-
-  // UPDATE SHOCKWAVE
+  // 💥 SHOCKWAVE
   for(let i=shockwaves.length-1;i>=0;i--){
     let w = shockwaves[i];
     w.life -= 0.05;
@@ -290,11 +305,6 @@ function animate(){
       shockwaves.splice(i,1);
     }
   }
-
-  // FOV EFFECT
-  targetFov = sprinting ? 90 : 75;
-  camera.fov += (targetFov - camera.fov)*0.1;
-  camera.updateProjectionMatrix();
 
   // CAMERA
   camera.position.set(
