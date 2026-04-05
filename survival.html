@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Flash Game</title>
+<title>Flash Speed Game</title>
 <style>
 body { margin:0; overflow:hidden; background:black; }
 #ui {
@@ -18,8 +18,8 @@ body { margin:0; overflow:hidden; background:black; }
 
 <div id="ui">
 ⚡ Flash Mode<br>
-WASD move | Shift toggle speed<br>
-Click to lock mouse
+WASD move | Shift = toggle speed<br>
+F = Dash<br>
 </div>
 
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -31,36 +31,52 @@ const scene = new THREE.Scene();
 
 // CAMERA
 const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
-camera.position.set(0,5,10); // 🔥 IMPORTANT
+camera.position.set(0,5,10);
 
 // RENDERER
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// 🔥 STRONG LIGHT (FIX)
-const light = new THREE.DirectionalLight(0xffffff, 2);
-light.position.set(5,10,5);
-scene.add(light);
+// LIGHT
+scene.add(new THREE.AmbientLight(0xffffff,1));
 
-// 🔥 ADD AMBIENT LIGHT
-scene.add(new THREE.AmbientLight(0xffffff, 1));
-
-// GROUND (VISIBLE MATERIAL)
+// GROUND
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(100,100),
-  new THREE.MeshBasicMaterial({color:0x333333})
+  new THREE.MeshBasicMaterial({color:0x222222})
 );
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
 
-// PLAYER (BRIGHT MATERIAL)
+// PLAYER
 const player = new THREE.Mesh(
   new THREE.BoxGeometry(1,2,1),
   new THREE.MeshBasicMaterial({color:0xffff00})
 );
 player.position.y = 1;
 scene.add(player);
+
+// INPUT
+let keys = {};
+let sprinting = false;
+
+document.addEventListener("keydown", e=>{
+  keys[e.key] = true;
+
+  if(e.key === "Shift"){
+    sprinting = !sprinting;
+  }
+
+  // 💥 DASH (F KEY)
+  if(e.key === "f"){
+    dash();
+  }
+});
+
+document.addEventListener("keyup", e=>{
+  keys[e.key] = false;
+});
 
 // CAMERA ROTATION
 let yaw = 0;
@@ -75,20 +91,36 @@ document.addEventListener("mousemove", e=>{
   }
 });
 
-// INPUT
-let keys = {};
-let sprinting = false;
+// ⚡ LIGHTNING TRAIL
+let trailPoints = [];
+let trailMax = 25;
 
-document.addEventListener("keydown", e=>{
-  keys[e.key] = true;
-  if(e.key === "Shift"){
-    sprinting = !sprinting;
-  }
+const trailMaterial = new THREE.LineBasicMaterial({
+  color:0xffff00,
+  transparent:true,
+  opacity:0.9
 });
 
-document.addEventListener("keyup", e=>{
-  keys[e.key] = false;
-});
+let trailLine = new THREE.Line(
+  new THREE.BufferGeometry(),
+  trailMaterial
+);
+scene.add(trailLine);
+
+// 🌈 COLOR SYSTEM
+let hue = 0;
+
+// 💥 DASH FUNCTION
+function dash(){
+  const dashDir = new THREE.Vector3(
+    -Math.sin(yaw),
+    0,
+    -Math.cos(yaw)
+  );
+
+  dashDir.multiplyScalar(3);
+  player.position.add(dashDir);
+}
 
 // LOOP
 function animate(){
@@ -109,6 +141,28 @@ function animate(){
   move.normalize().multiplyScalar(speed);
   player.position.add(move);
 
+  // ⚡ COLOR SHIFT
+  if(sprinting){
+    hue += 0.03;
+    const color = new THREE.Color().setHSL(hue % 1, 1, 0.5);
+    trailMaterial.color = color;
+  } else {
+    trailMaterial.color.set(0xffff00);
+  }
+
+  // ⚡ TRAIL
+  if(move.length() > 0.05){
+    trailPoints.push(player.position.clone());
+
+    if(trailPoints.length > trailMax){
+      trailPoints.shift();
+    }
+
+    const geo = new THREE.BufferGeometry().setFromPoints(trailPoints);
+    trailLine.geometry.dispose();
+    trailLine.geometry = geo;
+  }
+
   // CAMERA FOLLOW
   camera.position.set(
     player.position.x + Math.sin(yaw)*6,
@@ -123,7 +177,8 @@ function animate(){
 
 animate();
 
-</script>
-
-</body>
-</html>
+// RESIZE
+window.addEventListener("resize", ()=>{
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(inner
