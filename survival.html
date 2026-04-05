@@ -12,8 +12,10 @@ body{
   padding:30px;
 }
 
+h1{margin-bottom:20px;}
+
 .stat{
-  margin:10px;
+  margin:8px;
   font-size:18px;
 }
 
@@ -35,8 +37,14 @@ button:hover{
   background:#0f172a;
   padding:10px;
   border-radius:10px;
-  height:120px;
+  height:150px;
   overflow:auto;
+}
+
+#gameOver{
+  display:none;
+  font-size:22px;
+  margin-top:20px;
 }
 </style>
 </head>
@@ -45,10 +53,10 @@ button:hover{
 
 <h1>Street Survival Simulator</h1>
 
-<div class="stat">❤️ Health: <span id="health">100</span></div>
-<div class="stat">⚡ Energy: <span id="energy">100</span></div>
-<div class="stat">🧠 Stability: <span id="mind">100</span></div>
-<div class="stat">💰 Money: <span id="money">50</span></div>
+<div class="stat">❤️ Health: <span id="health"></span></div>
+<div class="stat">⚡ Energy: <span id="energy"></span></div>
+<div class="stat">🧠 Stability: <span id="mind"></span></div>
+<div class="stat">💰 Money: <span id="money"></span></div>
 
 <hr>
 
@@ -59,68 +67,54 @@ button:hover{
 
 <div id="log"></div>
 
+<div id="gameOver">
+  <p id="endText"></p>
+  <button onclick="restart()">Restart</button>
+</div>
+
 <script>
-let health=100, energy=100, mind=100, money=50;
+let health, energy, mind, money;
+let alive = true;
+
+// LOAD SAVE
+function loadGame(){
+  const save = JSON.parse(localStorage.getItem("save"));
+
+  if(save){
+    ({health,energy,mind,money} = save);
+  } else {
+    health=100; energy=100; mind=100; money=50;
+  }
+}
+
+// SAVE GAME
+function saveGame(){
+  localStorage.setItem("save", JSON.stringify({
+    health, energy, mind, money
+  }));
+}
 
 function update(){
   document.getElementById("health").innerText=health;
   document.getElementById("energy").innerText=energy;
   document.getElementById("mind").innerText=mind;
   document.getElementById("money").innerText=money;
+
+  saveGame();
+
+  // 💀 LOSE
+  if(health<=0 || mind<=0){
+    endGame("You collapsed.");
+  }
+
+  // 🏆 WIN
+  if(money >= 200){
+    endGame("You escaped and made it out.");
+  }
 }
 
 function log(text){
   document.getElementById("log").innerHTML += text+"<br>";
-}
-
-function rest(){
-  energy += 20;
-  health += 5;
-  mind += 5;
-  log("You rest and regain strength.");
-  clamp();
-  update();
-}
-
-function work(){
-  energy -= 20;
-  mind -= 5;
-  money += 25;
-  log("You worked and earned money.");
-  clamp();
-  update();
-}
-
-function risk(){
-  let outcome = Math.random();
-
-  if(outcome < 0.5){
-    money += 50;
-    health -= 15;
-    mind -= 10;
-    log("You took a risk and gained money, but it cost you.");
-  } else {
-    health -= 25;
-    mind -= 20;
-    log("The risk backfired badly.");
-  }
-
-  clamp();
-  update();
-}
-
-function recover(){
-  if(money >= 20){
-    money -= 20;
-    mind += 25;
-    health += 10;
-    log("You focus on recovery and feel better.");
-  } else {
-    log("Not enough money to recover.");
-  }
-
-  clamp();
-  update();
 }
 
 function clamp(){
@@ -129,6 +123,82 @@ function clamp(){
   mind = Math.max(0, Math.min(100, mind));
 }
 
+// ACTIONS
+
+function rest(){
+  if(!alive) return;
+
+  energy += 25;
+  mind += 5;
+  log("You rested.");
+  clamp(); update();
+}
+
+function work(){
+  if(!alive) return;
+
+  energy -= 20;
+  mind -= 5;
+  money += 30;
+
+  if(Math.random()<0.2){
+    health -= 10;
+    log("Work was exhausting.");
+  } else {
+    log("You worked and earned money.");
+  }
+
+  clamp(); update();
+}
+
+function risk(){
+  if(!alive) return;
+
+  let r = Math.random();
+
+  if(r < 0.4){
+    money += 60;
+    health -= 20;
+    log("Big reward but dangerous.");
+  } else {
+    health -= 30;
+    mind -= 20;
+    log("That went very bad.");
+  }
+
+  clamp(); update();
+}
+
+function recover(){
+  if(!alive) return;
+
+  if(money >= 20){
+    money -= 20;
+    mind += 30;
+    health += 10;
+    log("You took time to recover.");
+  } else {
+    log("Not enough money.");
+  }
+
+  clamp(); update();
+}
+
+// GAME END
+function endGame(text){
+  alive=false;
+  document.getElementById("gameOver").style.display="block";
+  document.getElementById("endText").innerText=text;
+}
+
+// RESTART
+function restart(){
+  localStorage.removeItem("save");
+  location.reload();
+}
+
+// START
+loadGame();
 update();
 </script>
 
