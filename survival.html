@@ -2,204 +2,116 @@
 <html>
 <head>
 <title>Street Survival Simulator</title>
-
 <style>
-body{
-  background:#020617;
+body { margin:0; overflow:hidden; }
+#ui {
+  position:absolute;
+  top:10px;
+  left:10px;
   color:white;
   font-family:Arial;
-  text-align:center;
-  padding:30px;
-}
-
-h1{margin-bottom:20px;}
-
-.stat{
-  margin:8px;
-  font-size:18px;
-}
-
-button{
-  padding:10px;
-  margin:5px;
-  border:none;
-  border-radius:8px;
-  background:#22c55e;
-  cursor:pointer;
-}
-
-button:hover{
-  background:#16a34a;
-}
-
-#log{
-  margin-top:20px;
-  background:#0f172a;
-  padding:10px;
-  border-radius:10px;
-  height:150px;
-  overflow:auto;
-}
-
-#gameOver{
-  display:none;
-  font-size:22px;
-  margin-top:20px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>Street Survival Simulator</h1>
-
-<div class="stat">❤️ Health: <span id="health"></span></div>
-<div class="stat">⚡ Energy: <span id="energy"></span></div>
-<div class="stat">🧠 Stability: <span id="mind"></span></div>
-<div class="stat">💰 Money: <span id="money"></span></div>
-
-<hr>
-
-<button onclick="rest()">Rest</button>
-<button onclick="work()">Work</button>
-<button onclick="risk()">Take Risk</button>
-<button onclick="recover()">Recover</button>
-
-<div id="log"></div>
-
-<div id="gameOver">
-  <p id="endText"></p>
-  <button onclick="restart()">Restart</button>
+<div id="ui">
+  WASD to move<br>
+  Click to look<br>
+  Press E to interact
 </div>
 
-<script>
-let health, energy, mind, money;
-let alive = true;
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js";
+import { PointerLockControls } from "https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/controls/PointerLockControls.js";
 
-// LOAD SAVE
-function loadGame(){
-  const save = JSON.parse(localStorage.getItem("save"));
+// SCENE
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
 
-  if(save){
-    ({health,energy,mind,money} = save);
-  } else {
-    health=100; energy=100; mind=100; money=50;
+// CAMERA
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+
+// RENDERER
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// CONTROLS
+const controls = new PointerLockControls(camera, document.body);
+document.addEventListener("click", () => controls.lock());
+scene.add(controls.getObject());
+
+// LIGHT
+const light = new THREE.PointLight(0xffffff, 1);
+light.position.set(5,5,5);
+scene.add(light);
+
+// FLOOR
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(50,50),
+  new THREE.MeshBasicMaterial({color:0x111111})
+);
+floor.rotation.x = -Math.PI/2;
+scene.add(floor);
+
+// OBJECT (TASK)
+const box = new THREE.Mesh(
+  new THREE.BoxGeometry(),
+  new THREE.MeshStandardMaterial({color:0x22c55e})
+);
+box.position.set(0,1,-5);
+scene.add(box);
+
+// PLAYER
+camera.position.y = 1.6;
+
+let moveForward=false, moveBack=false, moveLeft=false, moveRight=false;
+
+// KEYS
+document.addEventListener("keydown", e=>{
+  if(e.key==="w") moveForward=true;
+  if(e.key==="s") moveBack=true;
+  if(e.key==="a") moveLeft=true;
+  if(e.key==="d") moveRight=true;
+
+  // INTERACT
+  if(e.key==="e"){
+    const distance = camera.position.distanceTo(box.position);
+    if(distance < 2){
+      alert("Task completed!");
+      box.position.set(
+        Math.random()*10-5,
+        1,
+        Math.random()*10-5
+      );
+    }
   }
+});
+
+document.addEventListener("keyup", e=>{
+  if(e.key==="w") moveForward=false;
+  if(e.key==="s") moveBack=false;
+  if(e.key==="a") moveLeft=false;
+  if(e.key==="d") moveRight=false;
+});
+
+// MOVEMENT
+function animate(){
+  requestAnimationFrame(animate);
+
+  const speed = 0.1;
+
+  if(moveForward) controls.moveForward(speed);
+  if(moveBack) controls.moveForward(-speed);
+  if(moveLeft) controls.moveRight(-speed);
+  if(moveRight) controls.moveRight(speed);
+
+  renderer.render(scene, camera);
 }
 
-// SAVE GAME
-function saveGame(){
-  localStorage.setItem("save", JSON.stringify({
-    health, energy, mind, money
-  }));
-}
-
-function update(){
-  document.getElementById("health").innerText=health;
-  document.getElementById("energy").innerText=energy;
-  document.getElementById("mind").innerText=mind;
-  document.getElementById("money").innerText=money;
-
-  saveGame();
-
-  // 💀 LOSE
-  if(health<=0 || mind<=0){
-    endGame("You collapsed.");
-  }
-
-  // 🏆 WIN
-  if(money >= 200){
-    endGame("You escaped and made it out.");
-  }
-}
-
-function log(text){
-  document.getElementById("log").innerHTML += text+"<br>";
-}
-
-function clamp(){
-  health = Math.max(0, Math.min(100, health));
-  energy = Math.max(0, Math.min(100, energy));
-  mind = Math.max(0, Math.min(100, mind));
-}
-
-// ACTIONS
-
-function rest(){
-  if(!alive) return;
-
-  energy += 25;
-  mind += 5;
-  log("You rested.");
-  clamp(); update();
-}
-
-function work(){
-  if(!alive) return;
-
-  energy -= 20;
-  mind -= 5;
-  money += 30;
-
-  if(Math.random()<0.2){
-    health -= 10;
-    log("Work was exhausting.");
-  } else {
-    log("You worked and earned money.");
-  }
-
-  clamp(); update();
-}
-
-function risk(){
-  if(!alive) return;
-
-  let r = Math.random();
-
-  if(r < 0.4){
-    money += 60;
-    health -= 20;
-    log("Big reward but dangerous.");
-  } else {
-    health -= 30;
-    mind -= 20;
-    log("That went very bad.");
-  }
-
-  clamp(); update();
-}
-
-function recover(){
-  if(!alive) return;
-
-  if(money >= 20){
-    money -= 20;
-    mind += 30;
-    health += 10;
-    log("You took time to recover.");
-  } else {
-    log("Not enough money.");
-  }
-
-  clamp(); update();
-}
-
-// GAME END
-function endGame(text){
-  alive=false;
-  document.getElementById("gameOver").style.display="block";
-  document.getElementById("endText").innerText=text;
-}
-
-// RESTART
-function restart(){
-  localStorage.removeItem("save");
-  location.reload();
-}
-
-// START
-loadGame();
-update();
+animate();
 </script>
 
 </body>
