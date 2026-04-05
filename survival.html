@@ -3,7 +3,7 @@
 <head>
 <title>Street Survival Simulator</title>
 <style>
-body { margin:0; overflow:hidden; }
+body { margin:0; overflow:hidden; background:black; }
 #ui {
   position:absolute;
   top:10px;
@@ -17,30 +17,36 @@ body { margin:0; overflow:hidden; }
 <body>
 
 <div id="ui">
-  WASD to move<br>
-  Click to look<br>
-  Press E to interact
+Click screen to start<br>
+WASD to move<br>
+Mouse to look<br>
+Press E to interact
 </div>
 
-<script type="module">
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js";
-import { PointerLockControls } from "https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/controls/PointerLockControls.js";
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/PointerLockControls.js"></script>
+
+<script>
 
 // SCENE
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 
 // CAMERA
-const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 
 // RENDERER
 const renderer = new THREE.WebGLRenderer();
-renderer.setSize(innerWidth, innerHeight);
+renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // CONTROLS
-const controls = new PointerLockControls(camera, document.body);
-document.addEventListener("click", () => controls.lock());
+const controls = new THREE.PointerLockControls(camera, document.body);
+
+document.addEventListener("click", () => {
+  controls.lock();
+});
+
 scene.add(controls.getObject());
 
 // LIGHT
@@ -59,27 +65,26 @@ scene.add(floor);
 // OBJECT (TASK)
 const box = new THREE.Mesh(
   new THREE.BoxGeometry(),
-  new THREE.MeshStandardMaterial({color:0x22c55e})
+  new THREE.MeshBasicMaterial({color:0x22c55e})
 );
 box.position.set(0,1,-5);
 scene.add(box);
 
-// PLAYER
+// PLAYER HEIGHT
 camera.position.y = 1.6;
 
-let moveForward=false, moveBack=false, moveLeft=false, moveRight=false;
+// MOVEMENT
+let forward=false, back=false, left=false, right=false;
 
-// KEYS
 document.addEventListener("keydown", e=>{
-  if(e.key==="w") moveForward=true;
-  if(e.key==="s") moveBack=true;
-  if(e.key==="a") moveLeft=true;
-  if(e.key==="d") moveRight=true;
+  if(e.key==="w") forward=true;
+  if(e.key==="s") back=true;
+  if(e.key==="a") left=true;
+  if(e.key==="d") right=true;
 
-  // INTERACT
   if(e.key==="e"){
-    const distance = camera.position.distanceTo(box.position);
-    if(distance < 2){
+    const dist = camera.position.distanceTo(box.position);
+    if(dist < 2){
       alert("Task completed!");
       box.position.set(
         Math.random()*10-5,
@@ -91,27 +96,35 @@ document.addEventListener("keydown", e=>{
 });
 
 document.addEventListener("keyup", e=>{
-  if(e.key==="w") moveForward=false;
-  if(e.key==="s") moveBack=false;
-  if(e.key==="a") moveLeft=false;
-  if(e.key==="d") moveRight=false;
+  if(e.key==="w") forward=false;
+  if(e.key==="s") back=false;
+  if(e.key==="a") left=false;
+  if(e.key==="d") right=false;
 });
 
-// MOVEMENT
+// LOOP
 function animate(){
   requestAnimationFrame(animate);
 
   const speed = 0.1;
 
-  if(moveForward) controls.moveForward(speed);
-  if(moveBack) controls.moveForward(-speed);
-  if(moveLeft) controls.moveRight(-speed);
-  if(moveRight) controls.moveRight(speed);
+  if(forward) controls.moveForward(speed);
+  if(back) controls.moveForward(-speed);
+  if(left) controls.moveRight(-speed);
+  if(right) controls.moveRight(speed);
 
   renderer.render(scene, camera);
 }
 
 animate();
+
+// FIX RESIZE
+window.addEventListener("resize", ()=>{
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
 </script>
 
 </body>
