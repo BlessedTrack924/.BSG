@@ -17,7 +17,9 @@ body { margin:0; overflow:hidden; background:black; }
 <body>
 
 <div id="ui">
-WASD move | Shift sprint | Space jump
+Click screen<br>
+WASD move | Shift sprint | Space jump<br>
+Move mouse to rotate camera
 </div>
 
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -85,13 +87,31 @@ const target = new THREE.Mesh(
 target.position.set(10,1,-10);
 scene.add(target);
 
-// MOVEMENT
+// INPUT
 let keys = {};
-let velocityY = 0;
-let onGround = true;
-
 document.addEventListener("keydown", e=>keys[e.key]=true);
 document.addEventListener("keyup", e=>keys[e.key]=false);
+
+// CAMERA ROTATION
+let yaw = 0;
+let pitch = 0;
+
+document.addEventListener("click", ()=>{
+  document.body.requestPointerLock();
+});
+
+document.addEventListener("mousemove", e=>{
+  if(document.pointerLockElement === document.body){
+    yaw -= e.movementX * 0.002;
+    pitch -= e.movementY * 0.002;
+
+    pitch = Math.max(-1.2, Math.min(1.2, pitch));
+  }
+});
+
+// PHYSICS
+let velocityY = 0;
+let onGround = true;
 
 // COLLISION
 function checkCollision(pos){
@@ -112,20 +132,37 @@ function animate(){
 
   let speed = keys["Shift"] ? 0.2 : 0.1;
 
-  let moveX = 0;
-  let moveZ = 0;
+  // DIRECTION BASED ON CAMERA
+  const dir = new THREE.Vector3(
+    Math.sin(yaw),
+    0,
+    Math.cos(yaw)
+  );
 
-  if(keys["w"]) moveZ -= speed;
-  if(keys["s"]) moveZ += speed;
-  if(keys["a"]) moveX -= speed;
-  if(keys["d"]) moveX += speed;
+  const right = new THREE.Vector3(
+    Math.cos(yaw),
+    0,
+    -Math.sin(yaw)
+  );
 
-  let newPos = player.position.clone();
-  newPos.x += moveX;
-  newPos.z += moveZ;
+  let move = new THREE.Vector3();
+
+  if(keys["w"]) move.add(dir);
+  if(keys["s"]) move.sub(dir);
+  if(keys["a"]) move.sub(right);
+  if(keys["d"]) move.add(right);
+
+  move.normalize().multiplyScalar(speed);
+
+  let newPos = player.position.clone().add(move);
 
   if(!checkCollision(newPos)){
     player.position.copy(newPos);
+  }
+
+  // PLAYER ROTATION
+  if(move.length() > 0){
+    player.rotation.y = Math.atan2(move.x, move.z);
   }
 
   // GRAVITY
@@ -144,10 +181,13 @@ function animate(){
   }
 
   // CAMERA FOLLOW
-  camera.position.x = player.position.x;
-  camera.position.z = player.position.z + 5;
-  camera.position.y = player.position.y + 3;
+  const camOffset = new THREE.Vector3(
+    Math.sin(yaw)*5,
+    3 + pitch*2,
+    Math.cos(yaw)*5
+  );
 
+  camera.position.copy(player.position).add(camOffset);
   camera.lookAt(player.position);
 
   // MISSION
@@ -171,6 +211,7 @@ window.addEventListener("resize", ()=>{
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
+
 </script>
 
 </body>
