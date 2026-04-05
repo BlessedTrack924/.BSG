@@ -10,6 +10,17 @@ body { margin:0; overflow:hidden; background:black; }
   left:10px;
   color:white;
   font-family:Arial;
+  z-index:10;
+  text-shadow:0 0 10px rgba(255,255,255,0.6);
+}
+#flash {
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background:white;
+  opacity:0;
+  transition:opacity 0.15s ease;
+  z-index:9;
 }
 </style>
 </head>
@@ -20,85 +31,123 @@ body { margin:0; overflow:hidden; background:black; }
 ⚡ Flash Mode<br>
 WASD move | Shift = toggle speed<br>
 F = Dash<br>
+Score: <span id="score">0</span><br>
+Speed: <span id="mode">OFF</span>
 </div>
+
+<div id="flash"></div>
 
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 
 <script>
-
-// SCENE
 const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x000000, 20, 80);
 
-// CAMERA
-const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
-camera.position.set(0,5,10);
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+camera.position.set(0, 5, 10);
 
-// RENDERER
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio || 1);
 document.body.appendChild(renderer.domElement);
 
-// LIGHT
-scene.add(new THREE.AmbientLight(0xffffff,1));
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 
-// GROUND
+const dirLight = new THREE.DirectionalLight(0x88ccff, 0.8);
+dirLight.position.set(10, 20, 10);
+scene.add(dirLight);
+
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(100,100),
-  new THREE.MeshBasicMaterial({color:0x222222})
+  new THREE.PlaneGeometry(160, 160),
+  new THREE.MeshBasicMaterial({ color:0x181830 })
 );
-ground.rotation.x = -Math.PI/2;
+ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
-// PLAYER
+// decorative grid
+const grid = new THREE.GridHelper(160, 40, 0x2244ff, 0x222244);
+grid.position.y = 0.01;
+scene.add(grid);
+
+// player
 const player = new THREE.Mesh(
-  new THREE.BoxGeometry(1,2,1),
-  new THREE.MeshBasicMaterial({color:0xffff00})
+  new THREE.BoxGeometry(1, 2, 1),
+  new THREE.MeshBasicMaterial({ color:0xffff00 })
 );
 player.position.y = 1;
 scene.add(player);
 
-// INPUT
+// glow ring under player
+const ring = new THREE.Mesh(
+  new THREE.RingGeometry(0.8, 1.2, 32),
+  new THREE.MeshBasicMaterial({ color:0xffff00, side:THREE.DoubleSide, transparent:true, opacity:0.5 })
+);
+ring.rotation.x = -Math.PI / 2;
+ring.position.y = 0.05;
+scene.add(ring);
+
+// orbs
+const orbs = [];
+for(let i = 0; i < 15; i++){
+  const orb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.45, 16, 16),
+    new THREE.MeshBasicMaterial({ color:0x00ffff })
+  );
+  respawnOrb(orb);
+  scene.add(orb);
+  orbs.push(orb);
+}
+
+function respawnOrb(orb){
+  orb.position.set(
+    Math.random() * 80 - 40,
+    1,
+    Math.random() * 80 - 40
+  );
+}
+
+// input
 let keys = {};
 let sprinting = false;
+let yaw = 0;
+let hue = 0;
+let score = 0;
+let blurStrength = 0;
 
-document.addEventListener("keydown", e=>{
-  keys[e.key] = true;
+document.addEventListener("keydown", e => {
+  keys[e.key.toLowerCase()] = true;
 
   if(e.key === "Shift"){
     sprinting = !sprinting;
   }
 
-  // 💥 DASH (F KEY)
-  if(e.key === "f"){
+  if(e.key.toLowerCase() === "f"){
     dash();
   }
 });
 
-document.addEventListener("keyup", e=>{
-  keys[e.key] = false;
+document.addEventListener("keyup", e => {
+  keys[e.key.toLowerCase()] = false;
 });
 
-// CAMERA ROTATION
-let yaw = 0;
-
-document.addEventListener("click", ()=>{
+document.addEventListener("click", () => {
   document.body.requestPointerLock();
 });
 
-document.addEventListener("mousemove", e=>{
+document.addEventListener("mousemove", e => {
   if(document.pointerLockElement === document.body){
-    yaw -= e.movementX * 0.002;
+    yaw -= e.movementX * 0.0025;
   }
 });
 
-// ⚡ LIGHTNING TRAIL
+// trail
 let trailPoints = [];
-let trailMax = 25;
+const trailMax = 40;
 
 const trailMaterial = new THREE.LineBasicMaterial({
   color:0xffff00,
   transparent:true,
-  opacity:0.9
+  opacity:0.95
 });
 
 let trailLine = new THREE.Line(
@@ -107,29 +156,57 @@ let trailLine = new THREE.Line(
 );
 scene.add(trailLine);
 
-// 🌈 COLOR SYSTEM
-let hue = 0;
+// shockwaves
+const shockwaves = [];
 
-// 💥 DASH FUNCTION
+function createShockwave(){
+  const wave = new THREE.Mesh(
+    new THREE.RingGeometry(0.5, 0.8, 32),
+    new THREE.MeshBasicMaterial({
+      color:0xffffff,
+      side:THREE.DoubleSide,
+      transparent:true,
+      opacity:0.85
+    })
+  );
+  wave.rotation.x = -Math.PI / 2;
+  wave.position.set(player.position.x, 0.08, player.position.z);
+  scene.add(wave);
+  shockwaves.push({ mesh: wave, life: 1, scale: 1 });
+}
+
+function flashScreen(){
+  const flash = document.getElementById("flash");
+  flash.style.opacity = "0.45";
+  setTimeout(() => {
+    flash.style.opacity = "0";
+  }, 80);
+}
+
 function dash(){
   const dashDir = new THREE.Vector3(
     -Math.sin(yaw),
     0,
     -Math.cos(yaw)
-  );
+  ).multiplyScalar(4.5);
 
-  dashDir.multiplyScalar(3);
   player.position.add(dashDir);
+  createShockwave();
+  flashScreen();
+  blurStrength = 0.25;
 }
 
-// LOOP
+function updateScore(){
+  document.getElementById("score").innerText = score;
+}
+
 function animate(){
   requestAnimationFrame(animate);
 
-  let speed = sprinting ? 0.4 : 0.15;
+  const speed = sprinting ? 0.42 : 0.16;
 
-  const dir = new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
-  const right = new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+  const dir = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+  const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
 
   let move = new THREE.Vector3();
 
@@ -138,47 +215,102 @@ function animate(){
   if(keys["a"]) move.sub(right);
   if(keys["d"]) move.add(right);
 
-  move.normalize().multiplyScalar(speed);
-  player.position.add(move);
+  if(move.length() > 0){
+    move.normalize().multiplyScalar(speed);
+    player.position.add(move);
+    player.rotation.y = Math.atan2(move.x, move.z);
+  }
 
-  // ⚡ COLOR SHIFT
+  // speed color
   if(sprinting){
     hue += 0.03;
     const color = new THREE.Color().setHSL(hue % 1, 1, 0.5);
     trailMaterial.color = color;
+    ring.material.color = color;
+    player.material.color = color;
   } else {
     trailMaterial.color.set(0xffff00);
+    ring.material.color.set(0xffff00);
+    player.material.color.set(0xffff00);
   }
 
-  // ⚡ TRAIL
-  if(move.length() > 0.05){
+  // trail
+  if(move.length() > 0.03){
     trailPoints.push(player.position.clone());
-
     if(trailPoints.length > trailMax){
       trailPoints.shift();
     }
-
     const geo = new THREE.BufferGeometry().setFromPoints(trailPoints);
     trailLine.geometry.dispose();
     trailLine.geometry = geo;
   }
 
-  // CAMERA FOLLOW
+  // shockwave update
+  for(let i = shockwaves.length - 1; i >= 0; i--){
+    const w = shockwaves[i];
+    w.life -= 0.04;
+    w.scale += 0.18;
+    w.mesh.scale.set(w.scale, w.scale, w.scale);
+    w.mesh.material.opacity = w.life;
+
+    if(w.life <= 0){
+      scene.remove(w.mesh);
+      shockwaves.splice(i, 1);
+    }
+  }
+
+  // orb collection
+  for(const orb of orbs){
+    orb.rotation.y += 0.03;
+    orb.position.y = 1 + Math.sin(Date.now() * 0.003 + orb.position.x) * 0.2;
+
+    if(player.position.distanceTo(orb.position) < 1.4){
+      score++;
+      updateScore();
+      respawnOrb(orb);
+      blurStrength = 0.12;
+    }
+  }
+
+  // camera follow
+  const camDistance = sprinting ? 7.5 : 6;
+  const camHeight = sprinting ? 4.6 : 4;
+
   camera.position.set(
-    player.position.x + Math.sin(yaw)*6,
-    player.position.y + 4,
-    player.position.z + Math.cos(yaw)*6
+    player.position.x + Math.sin(yaw) * camDistance,
+    player.position.y + camHeight,
+    player.position.z + Math.cos(yaw) * camDistance
   );
 
-  camera.lookAt(player.position);
+  camera.lookAt(player.position.x, player.position.y + 1.2, player.position.z);
+
+  // fake motion blur vibe with fov pulse
+  if(blurStrength > 0){
+    blurStrength *= 0.9;
+  }
+  const targetFov = sprinting ? 84 : 75;
+  camera.fov += (targetFov + blurStrength * 50 - camera.fov) * 0.12;
+  camera.updateProjectionMatrix();
+
+  // pulsing ring
+  const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.08;
+  ring.scale.set(pulse, pulse, pulse);
+  ring.position.x = player.position.x;
+  ring.position.z = player.position.z;
 
   renderer.render(scene, camera);
+
+  document.getElementById("mode").innerText = sprinting ? "ON" : "OFF";
 }
 
 animate();
 
-// RESIZE
-window.addEventListener("resize", ()=>{
+window.addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(inner
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+
+</body>
+</html>
