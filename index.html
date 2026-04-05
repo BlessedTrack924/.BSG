@@ -13,7 +13,6 @@ body{
   display:flex;
 }
 
-/* SIDEBAR */
 .sidebar{
   width:220px;
   background:#020617;
@@ -50,7 +49,6 @@ input,button{padding:10px;margin:5px;border-radius:8px;border:none;}
   text-shadow:0 0 10px rgba(255,215,0,0.7);
 }
 
-/* FEATURED GAME */
 .featuredGame{
   position:relative;
   margin-bottom:30px;
@@ -75,12 +73,7 @@ input,button{padding:10px;margin:5px;border-radius:8px;border:none;}
   padding:20px;
 }
 .featuredOverlay h1{margin:0;font-size:28px;}
-.featuredOverlay button{
-  margin-top:10px;
-  width:150px;
-}
 
-/* GAME GRID */
 .gameGrid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
@@ -96,7 +89,6 @@ input,button{padding:10px;margin:5px;border-radius:8px;border:none;}
   position:relative;
   overflow:hidden;
 }
-
 .gameCard::before{
   content:"";
   position:absolute;
@@ -109,9 +101,7 @@ input,button{padding:10px;margin:5px;border-radius:8px;border:none;}
   opacity:0;
   transition:0.3s;
 }
-
 .gameCard:hover::before{opacity:1;}
-
 .gameCard:hover{
   transform:translateY(-5px) scale(1.05);
   box-shadow:0 10px 25px rgba(34,197,94,0.3);
@@ -139,12 +129,9 @@ input,button{padding:10px;margin:5px;border-radius:8px;border:none;}
 
 <div class="main">
 
-<!-- DASHBOARD -->
 <div id="dashboard">
   <h1>Big Steins Games</h1>
-  <div class="card">
-    🪙 Coins: <span id="coins">0</span>
-  </div>
+  <div class="card">🪙 Coins: <span id="coins">0</span></div>
 
   <div id="adminPanel" class="card" style="display:none;">
     <h3>Admin Dashboard</h3>
@@ -172,15 +159,12 @@ input,button{padding:10px;margin:5px;border-radius:8px;border:none;}
   </div>
 </div>
 
-<!-- GAMES -->
 <div id="games" style="display:none;">
 
-  <!-- FEATURED -->
   <div class="featuredGame">
     <img src="https://images.unsplash.com/photo-1606813907291-d86efa9b94db?q=80&w=1200" class="featuredImg">
     <div class="featuredOverlay">
       <h1>Kart Racing</h1>
-      <p>Fast-paced racing chaos. Drift, boost, dominate.</p>
       <button onclick="openKart()">Play Now</button>
     </div>
   </div>
@@ -215,14 +199,12 @@ input,button{padding:10px;margin:5px;border-radius:8px;border:none;}
   <p id="gameMessage"></p>
 </div>
 
-<!-- LOGIN -->
 <div id="login" style="display:none;" class="card">
   <input id="loginUsername" placeholder="Username">
   <input id="password" type="password" placeholder="Password">
   <button onclick="loginUser()">Login</button>
 </div>
 
-<!-- SIGNUP -->
 <div id="signup" style="display:none;" class="card">
   <input id="username" placeholder="Username">
   <input id="newPassword" type="password" placeholder="Password">
@@ -239,22 +221,19 @@ const supabase = createClient(
   "sb_publishable_i7VgJlJ5CuO-LblxQ67ItQ_kR9KGkat"
 );
 
-let user=null, coins=0, isAdmin=false;
-let prices = {};
+let user=null, coins=0, isAdmin=false, prices={};
 
 function el(id){return document.getElementById(id);}
 function fakeEmail(u){return u.toLowerCase()+"@bsmg.local";}
 
-function hideAll(){
-  ["dashboard","games","login","signup"].forEach(id=>el(id).style.display="none");
-}
+function hideAll(){["dashboard","games","login","signup"].forEach(id=>el(id).style.display="none");}
 window.showDashboard=()=>{hideAll();el("dashboard").style.display="block";}
 window.showGames=()=>{hideAll();el("games").style.display="block";}
 window.showLogin=()=>{hideAll();el("login").style.display="block";}
 window.showSignup=()=>{hideAll();el("signup").style.display="block";}
 
 function animateCoins(){
-  const c = el("coins");
+  const c=el("coins");
   c.style.transform="scale(1.3)";
   c.style.color="#22c55e";
   setTimeout(()=>{c.style.transform="scale(1)";c.style.color="white";},200);
@@ -263,7 +242,7 @@ function animateCoins(){
 function updateUI(){el("coins").innerText=coins;}
 
 async function loadPrices(){
-  const { data } = await supabase.from("games").select("*");
+  const {data}=await supabase.from("games").select("*");
   data.forEach(g=>prices[g.id]=g.price);
   el("price-clicker").innerText=prices.clicker||0;
   el("price-kart").innerText=prices.kart||0;
@@ -354,7 +333,7 @@ window.openSurvival=async()=>{
   if(coins<prices.survival){el("gameMessage").innerText="Need "+prices.survival;return;}
   coins-=prices.survival;updateUI();animateCoins();
   await supabase.from("users").update({coins}).eq("id",user.id);
-  window.open("https://example.com");
+  window.open("survival.html","_blank");
 };
 
 supabase.channel('coins')
@@ -366,7 +345,6 @@ supabase.channel('coins')
   }
 })
 .subscribe();
-
 </script>
 
 </body>
