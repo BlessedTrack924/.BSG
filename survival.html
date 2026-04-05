@@ -18,27 +18,24 @@ body { margin:0; overflow:hidden; background:black; }
 
 <div id="ui">
 Click to start<br>
-WASD to move<br>
-Mouse to look<br>
-Press E to interact
+WASD move | Shift sprint | Space jump<br>
+Reach the red marker<br>
 </div>
 
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 
 <script>
-console.log("game loaded");
-
 // SCENE
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
+scene.background = new THREE.Color(0x111111);
 
 // CAMERA
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
 
 // RENDERER
 const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // CONTROLS
@@ -47,48 +44,70 @@ document.addEventListener("click", () => controls.lock());
 scene.add(controls.getObject());
 
 // LIGHT
-const light = new THREE.PointLight(0xffffff, 1);
-light.position.set(5,5,5);
+const light = new THREE.HemisphereLight(0xffffff,0x444444,1);
 scene.add(light);
 
-// FLOOR
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(50,50),
-  new THREE.MeshBasicMaterial({color:0x111111})
+// FLOOR (CITY GROUND)
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(200,200),
+  new THREE.MeshBasicMaterial({color:0x222222})
 );
-floor.rotation.x = -Math.PI/2;
-scene.add(floor);
+ground.rotation.x = -Math.PI/2;
+scene.add(ground);
 
-// TASK OBJECT
-const box = new THREE.Mesh(
-  new THREE.BoxGeometry(),
-  new THREE.MeshBasicMaterial({color:0x22c55e})
+// BUILDINGS
+for(let i=0;i<50;i++){
+  const b = new THREE.Mesh(
+    new THREE.BoxGeometry(2, Math.random()*8+2, 2),
+    new THREE.MeshBasicMaterial({color:0x555555})
+  );
+  b.position.set(
+    Math.random()*100-50,
+    b.geometry.parameters.height/2,
+    Math.random()*100-50
+  );
+  scene.add(b);
+}
+
+// NPCs
+const npcs = [];
+for(let i=0;i<5;i++){
+  const npc = new THREE.Mesh(
+    new THREE.BoxGeometry(1,2,1),
+    new THREE.MeshBasicMaterial({color:0x00ffff})
+  );
+  npc.position.set(Math.random()*20-10,1,Math.random()*20-10);
+  scene.add(npc);
+  npcs.push(npc);
+}
+
+// MISSION TARGET
+const target = new THREE.Mesh(
+  new THREE.BoxGeometry(1,1,1),
+  new THREE.MeshBasicMaterial({color:0xff0000})
 );
-box.position.set(0,1,-5);
-scene.add(box);
+target.position.set(10,1,-10);
+scene.add(target);
 
 // PLAYER
 camera.position.y = 1.6;
 
 // MOVEMENT
 let forward=false, back=false, left=false, right=false;
+let velocityY = 0;
+let onGround = true;
+let sprint = false;
 
 document.addEventListener("keydown", e=>{
   if(e.key==="w") forward=true;
   if(e.key==="s") back=true;
   if(e.key==="a") left=true;
   if(e.key==="d") right=true;
+  if(e.key==="Shift") sprint=true;
 
-  if(e.key==="e"){
-    const dist = camera.position.distanceTo(box.position);
-    if(dist < 2){
-      alert("Task completed!");
-      box.position.set(
-        Math.random()*10-5,
-        1,
-        Math.random()*10-5
-      );
-    }
+  if(e.code==="Space" && onGround){
+    velocityY = 0.2;
+    onGround=false;
   }
 });
 
@@ -97,29 +116,57 @@ document.addEventListener("keyup", e=>{
   if(e.key==="s") back=false;
   if(e.key==="a") left=false;
   if(e.key==="d") right=false;
+  if(e.key==="Shift") sprint=false;
 });
 
 // LOOP
 function animate(){
   requestAnimationFrame(animate);
 
-  const speed = 0.1;
+  let speed = sprint ? 0.2 : 0.1;
 
   if(forward) controls.moveForward(speed);
   if(back) controls.moveForward(-speed);
   if(left) controls.moveRight(-speed);
   if(right) controls.moveRight(speed);
 
+  // GRAVITY
+  velocityY -= 0.01;
+  camera.position.y += velocityY;
+
+  if(camera.position.y <= 1.6){
+    camera.position.y = 1.6;
+    velocityY = 0;
+    onGround = true;
+  }
+
+  // NPC MOVEMENT
+  npcs.forEach(n=>{
+    n.position.x += (Math.random()-0.5)*0.05;
+    n.position.z += (Math.random()-0.5)*0.05;
+  });
+
+  // MISSION CHECK
+  const dist = camera.position.distanceTo(target.position);
+  if(dist < 2){
+    alert("Mission complete!");
+    target.position.set(
+      Math.random()*50-25,
+      1,
+      Math.random()*50-25
+    );
+  }
+
   renderer.render(scene, camera);
 }
 
 animate();
 
-// RESIZE FIX
+// RESIZE
 window.addEventListener("resize", ()=>{
-  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.aspect = innerWidth/innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(innerWidth, innerHeight);
 });
 </script>
 
