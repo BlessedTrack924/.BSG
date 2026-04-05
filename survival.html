@@ -18,8 +18,8 @@ body { margin:0; overflow:hidden; background:black; }
 
 <div id="ui">
 ⚡ Flash Mode<br>
-WASD move | Shift = speed<br>
-Mouse = rotate<br>
+WASD move | Shift = toggle speed<br>
+Speed: <span id="mode">OFF</span><br>
 Score: <span id="score">0</span>
 </div>
 
@@ -45,17 +45,21 @@ scene.add(new THREE.HemisphereLight(0xffffff,0x444444,1));
 // GROUND
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(200,200),
-  new THREE.MeshStandardMaterial({color:0x111111})
+  new THREE.MeshStandardMaterial({color:0x1a1a2e})
 );
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
 
-// 🧍 CHARACTER (BETTER THAN CUBE)
+// 🧍 PLAYER
 const player = new THREE.Group();
 
 const body = new THREE.Mesh(
   new THREE.CapsuleGeometry(0.5,1.5),
-  new THREE.MeshStandardMaterial({color:0xffff00})
+  new THREE.MeshStandardMaterial({
+    color:0xffff00,
+    emissive:0xffaa00,
+    emissiveIntensity:1.5
+  })
 );
 body.position.y = 1;
 player.add(body);
@@ -74,8 +78,13 @@ for(let i=0;i<10;i++){
   orbs.push(orb);
 }
 
-// ⚡ LIGHTNING TRAIL (LINE BASED)
-const trailMaterial = new THREE.LineBasicMaterial({color:0x00ffff});
+// ⚡ TRAIL
+const trailMaterial = new THREE.LineBasicMaterial({
+  color:0xffff00,
+  transparent:true,
+  opacity:0.9
+});
+
 const trailPoints = [];
 const trailMax = 40;
 
@@ -102,11 +111,23 @@ function respawnOrb(o){
 
 // INPUT
 let keys = {};
-document.addEventListener("keydown", e=>keys[e.key]=true);
-document.addEventListener("keyup", e=>keys[e.key]=false);
+let sprinting = false;
+
+document.addEventListener("keydown", e=>{
+  keys[e.key] = true;
+
+  if(e.key === "Shift"){
+    sprinting = !sprinting;
+  }
+});
+
+document.addEventListener("keyup", e=>{
+  keys[e.key] = false;
+});
 
 // CAMERA ROTATION
 let yaw = 0;
+let hue = 0;
 
 document.addEventListener("click", ()=>{
   document.body.requestPointerLock();
@@ -122,7 +143,7 @@ document.addEventListener("mousemove", e=>{
 function animate(){
   requestAnimationFrame(animate);
 
-  let speed = keys["Shift"] ? 0.5 : 0.15;
+  let speed = sprinting ? 0.5 : 0.15;
 
   // 🔥 FIXED DIRECTION
   const dir = new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
@@ -143,7 +164,18 @@ function animate(){
     player.rotation.y = Math.atan2(move.x, move.z);
   }
 
-  // ⚡ TRAIL UPDATE
+  // ⚡ COLOR SHIFT WHEN SPRINTING
+  if(sprinting){
+    hue += 0.02;
+    const color = new THREE.Color().setHSL(hue % 1, 1, 0.5);
+    trailMaterial.color = color;
+    body.material.emissive = color;
+  } else {
+    trailMaterial.color.set(0xffff00);
+    body.material.emissive.set(0xffaa00);
+  }
+
+  // ⚡ TRAIL
   if(move.length() > 0.05){
     trailPoints.push(player.position.clone());
     if(trailPoints.length > trailMax){
@@ -161,10 +193,11 @@ function animate(){
     4,
     Math.cos(yaw)*6
   );
+
   camera.position.copy(player.position).add(camOffset);
   camera.lookAt(player.position);
 
-  // ORB COLLECTION
+  // 🎯 ORB COLLECTION
   orbs.forEach(o=>{
     if(player.position.distanceTo(o.position) < 1.5){
       score++;
@@ -173,6 +206,9 @@ function animate(){
     }
   });
 
+  // UI UPDATE
+  document.getElementById("mode").innerText = sprinting ? "ON" : "OFF";
+
   renderer.render(scene, camera);
 }
 
@@ -180,9 +216,9 @@ animate();
 
 // RESIZE
 window.addEventListener("resize", ()=>{
-  camera.aspect = innerWidth/innerHeight;
+  camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
+  renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 </script>
