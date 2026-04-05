@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Flash Speed Game</title>
+<title>Flash Final Form</title>
 <style>
 body { margin:0; overflow:hidden; background:black; }
 #ui {
@@ -26,10 +26,9 @@ body { margin:0; overflow:hidden; background:black; }
 <body>
 
 <div id="ui">
-⚡ Flash Mode<br>
+⚡ Flash Final Form<br>
 WASD move | Shift toggle speed<br>
 F = Dash<br>
-Score: <span id="score">0</span><br>
 Speed: <span id="mode">OFF</span>
 </div>
 
@@ -49,6 +48,7 @@ document.body.appendChild(renderer.domElement);
 
 scene.add(new THREE.AmbientLight(0xffffff,1));
 
+// GROUND
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(100,100),
   new THREE.MeshBasicMaterial({color:0x222244})
@@ -68,18 +68,12 @@ scene.add(player);
 let keys = {};
 let sprinting = false;
 let yaw = 0;
-let score = 0;
 
 document.addEventListener("keydown", e=>{
   keys[e.key.toLowerCase()] = true;
 
-  if(e.key === "Shift"){
-    sprinting = !sprinting;
-  }
-
-  if(e.key.toLowerCase() === "f"){
-    dash();
-  }
+  if(e.key === "Shift") sprinting = !sprinting;
+  if(e.key.toLowerCase() === "f") dash();
 });
 
 document.addEventListener("keyup", e=>{
@@ -105,7 +99,6 @@ function dash(){
   ).multiplyScalar(4);
 
   player.position.add(dir);
-
   createShockwave();
   flash();
 }
@@ -130,36 +123,77 @@ function createShockwave(){
   shockwaves.push({mesh:wave, life:1, scale:1});
 }
 
-// ⚡ LIGHTNING TRAIL
+// ⚡ LIGHTNING SYSTEM
 let lightningTrail = [];
 
 function createLightning(){
-  const geo = new THREE.BufferGeometry();
   const points = [];
+  const dir = new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
+  const start = player.position.clone();
 
-  for(let i=0;i<5;i++){
-    points.push(new THREE.Vector3(
-      player.position.x + (Math.random()-0.5)*0.5,
-      player.position.y + Math.random(),
-      player.position.z + (Math.random()-0.5)*0.5
-    ));
+  for(let i=0;i<8;i++){
+    const t = i/8;
+    const forward = dir.clone().multiplyScalar(-t*2);
+
+    const p = start.clone().add(forward);
+    p.x += (Math.random()-0.5)*0.6;
+    p.y += Math.random()*0.6;
+    p.z += (Math.random()-0.5)*0.6;
+
+    points.push(p);
   }
 
-  geo.setFromPoints(points);
+  const geo = new THREE.BufferGeometry().setFromPoints(points);
 
-  const mat = new THREE.LineBasicMaterial({
-    color: new THREE.Color().setHSL(Math.random(),1,0.5),
+  // CORE
+  const core = new THREE.Line(geo, new THREE.LineBasicMaterial({
+    color:0xffffff,
     transparent:true,
     opacity:1
-  });
+  }));
+  scene.add(core);
 
-  const line = new THREE.Line(geo, mat);
-  scene.add(line);
+  // GLOW
+  const glow = new THREE.Line(geo, new THREE.LineBasicMaterial({
+    color: new THREE.Color().setHSL(Math.random(),1,0.6),
+    transparent:true,
+    opacity:0.6
+  }));
+  glow.scale.set(1.5,1.5,1.5);
+  scene.add(glow);
 
-  lightningTrail.push({mesh:line, life:1});
+  lightningTrail.push({mesh:core, life:1});
+  lightningTrail.push({mesh:glow, life:1});
+
+  if(Math.random() < 0.5){
+    createBranch(points[Math.floor(Math.random()*points.length)]);
+  }
 }
 
-// FLASH EFFECT
+function createBranch(origin){
+  const pts = [];
+
+  for(let i=0;i<4;i++){
+    pts.push(origin.clone().add(new THREE.Vector3(
+      (Math.random()-0.5)*1.2,
+      Math.random()*0.6,
+      (Math.random()-0.5)*1.2
+    )));
+  }
+
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+
+  const branch = new THREE.Line(geo, new THREE.LineBasicMaterial({
+    color:0x66ccff,
+    transparent:true,
+    opacity:0.9
+  }));
+
+  scene.add(branch);
+  lightningTrail.push({mesh:branch, life:0.6});
+}
+
+// FLASH
 function flash(){
   const f = document.getElementById("flash");
   f.style.opacity = "0.4";
@@ -189,15 +223,15 @@ function animate(){
     player.rotation.y = Math.atan2(move.x, move.z);
   }
 
-  // ⚡ CREATE LIGHTNING
+  // CREATE LIGHTNING
   if(sprinting && move.length()>0.05){
     createLightning();
   }
 
-  // 💨 UPDATE LIGHTNING
+  // UPDATE LIGHTNING
   for(let i=lightningTrail.length-1;i>=0;i--){
     let l = lightningTrail[i];
-    l.life -= 0.08;
+    l.life -= 0.05;
     l.mesh.material.opacity = l.life;
 
     if(l.life <= 0){
@@ -206,13 +240,13 @@ function animate(){
     }
   }
 
-  // 📴 CLEAR WHEN OFF
+  // CLEAR WHEN OFF
   if(!sprinting){
     lightningTrail.forEach(l=>scene.remove(l.mesh));
     lightningTrail = [];
   }
 
-  // 💥 UPDATE SHOCKWAVE
+  // UPDATE SHOCKWAVE
   for(let i=shockwaves.length-1;i>=0;i--){
     let w = shockwaves[i];
     w.life -= 0.05;
