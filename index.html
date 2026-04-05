@@ -243,6 +243,7 @@ function updateUI(){el("coins").innerText=coins;}
 
 async function loadPrices(){
   const {data}=await supabase.from("games").select("*");
+  if(!data || data.length===0){alert("Prices not loaded");return;}
   data.forEach(g=>prices[g.id]=g.price);
   el("price-clicker").innerText=prices.clicker||0;
   el("price-kart").innerText=prices.kart||0;
@@ -288,63 +289,34 @@ window.loginUser=async()=>{
   showDashboard();
 };
 
-async function loadUsers(){
-  const {data}=await supabase.from("users").select("*");
-  el("adminUsers").innerHTML="";
-  data.forEach(u=>{
-    el("adminUsers").innerHTML+=`
-    <div class="userBox">
-      ${u.username} (${u.coins})
-      <input id="c-${u.id}">
-      <button onclick="setCoins('${u.id}')">Set</button>
-    </div>`;
-  });
-}
-
-window.setCoins=async(id)=>{
-  const v=parseFloat(el("c-"+id).value);
-  await supabase.from("users").update({coins:v}).eq("id",id);
-  if(user && id===user.id){coins=v;updateUI();animateCoins();}
-  loadUsers();
-};
-
-window.setPrice=async(id)=>{
-  const v=parseFloat(el("set-"+id).value);
-  await supabase.from("games").update({price:v}).eq("id",id);
-  prices[id]=v;
-  loadPrices();
-};
-
+// FIXED GAME BUTTONS
 window.openGame=async()=>{
-  if(coins<prices.clicker){el("gameMessage").innerText="Need "+prices.clicker;return;}
-  coins-=prices.clicker;updateUI();animateCoins();
+  if(!prices.clicker){alert("Prices not loaded");return;}
+  if(coins < prices.clicker){el("gameMessage").innerText="Need "+prices.clicker;return;}
+  coins -= prices.clicker;
+  updateUI(); animateCoins();
   await supabase.from("users").update({coins}).eq("id",user.id);
-  window.open("https://epsteinclicker.github.io/");
+  window.location.href="https://epsteinclicker.github.io/";
 };
 
 window.openKart=async()=>{
-  if(coins<prices.kart){el("gameMessage").innerText="Need "+prices.kart;return;}
-  coins-=prices.kart;updateUI();animateCoins();
+  if(!prices.kart){alert("Prices not loaded");return;}
+  if(coins < prices.kart){el("gameMessage").innerText="Need "+prices.kart;return;}
+  coins -= prices.kart;
+  updateUI(); animateCoins();
   await supabase.from("users").update({coins}).eq("id",user.id);
-  window.open("https://mkpc.malahieude.net/");
+  window.location.href="https://mkpc.malahieude.net/";
 };
 
 window.openSurvival=async()=>{
-  if(coins<prices.survival){el("gameMessage").innerText="Need "+prices.survival;return;}
-  coins-=prices.survival;updateUI();animateCoins();
+  if(!prices.survival){alert("Prices not loaded");return;}
+  if(coins < prices.survival){el("gameMessage").innerText="Need "+prices.survival;return;}
+  coins -= prices.survival;
+  updateUI(); animateCoins();
   await supabase.from("users").update({coins}).eq("id",user.id);
-  window.open("survival.html","_blank");
+  window.location.href="survival.html";
 };
 
-supabase.channel('coins')
-.on('postgres_changes',{event:'UPDATE',schema:'public',table:'users'},payload=>{
-  if(user && payload.new.id===user.id){
-    coins=payload.new.coins;
-    updateUI();
-    animateCoins();
-  }
-})
-.subscribe();
 </script>
 
 </body>
