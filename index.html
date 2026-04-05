@@ -30,7 +30,6 @@ button{background:#22c55e;cursor:pointer;}
 
 <div class="main">
 
-<!-- DASHBOARD -->
 <div id="dashboard">
   <h1>Big Steins Games</h1>
   <div class="card">
@@ -43,7 +42,6 @@ button{background:#22c55e;cursor:pointer;}
   </div>
 </div>
 
-<!-- GAMES -->
 <div id="games" style="display:none;">
   <div class="card">
     <h3>Clicker Game</h3>
@@ -53,14 +51,12 @@ button{background:#22c55e;cursor:pointer;}
   </div>
 </div>
 
-<!-- LOGIN -->
 <div id="login" style="display:none;" class="card">
   <input id="loginUsername" placeholder="Username">
   <input id="password" type="password" placeholder="Password">
   <button onclick="loginUser()">Login</button>
 </div>
 
-<!-- SIGNUP -->
 <div id="signup" style="display:none;" class="card">
   <input id="username" placeholder="Username">
   <input id="newPassword" type="password" placeholder="Password">
@@ -98,13 +94,18 @@ window.signupUser=async()=>{
   const u=el("username").value;
   const p=el("newPassword").value;
 
+  console.log("Signup:", u);
+
   const {data,error}=await supabase.auth.signUp({
     email:fakeEmail(u),password:p
   });
 
-  if(error){alert(error.message);return;}
+  if(error){
+    alert("SIGNUP ERROR: " + error.message);
+    return;
+  }
 
-  await supabase.from("users").insert({
+  const { error: insertError } = await supabase.from("users").insert({
     id:data.user.id,
     username:u,
     coins:0,
@@ -112,36 +113,65 @@ window.signupUser=async()=>{
     banned:false
   });
 
+  if(insertError){
+    alert("INSERT ERROR: " + insertError.message);
+    console.log(insertError);
+    return;
+  }
+
   alert("Account created");
 };
 
-// LOGIN
-window.loginUser=async()=>{
-  const u=el("loginUsername").value;
-  const p=el("password").value;
+// LOGIN (WITH DEBUG)
+window.loginUser = async () => {
+  const u = el("loginUsername").value;
+  const p = el("password").value;
 
-  const {data,error}=await supabase.auth.signInWithPassword({
-    email:fakeEmail(u),password:p
+  console.log("Logging in:", u);
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: fakeEmail(u),
+    password: p
   });
 
-  if(error){alert(error.message);return;}
+  if (error) {
+    alert("LOGIN ERROR: " + error.message);
+    console.log(error);
+    return;
+  }
 
-  user=data.user;
+  console.log("Logged in:", data);
 
-  const {data:rows}=await supabase.from("users").select("*").eq("id",user.id);
-  const me=rows[0];
+  user = data.user;
 
-  if(me.banned){alert("You are banned");return;}
+  const { data: rows, error: rowError } = await supabase
+    .from("users")
+    .select("*")
+    .eq("id", user.id);
 
-  coins=me.coins||0;
-  isAdmin=me.is_admin;
+  if (rowError || !rows || rows.length === 0) {
+    alert("User row not found in table");
+    console.log(rowError);
+    return;
+  }
 
-  if(isAdmin){
-    el("adminPanel").style.display="block";
+  const me = rows[0];
+
+  if (me.banned) {
+    alert("You are banned");
+    return;
+  }
+
+  coins = me.coins || 0;
+  isAdmin = me.is_admin;
+
+  if (isAdmin) {
+    el("adminPanel").style.display = "block";
     loadUsers();
   }
 
   updateUI();
+  alert("Login successful");
   showDashboard();
 };
 
