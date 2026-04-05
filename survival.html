@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Street Survival Simulator</title>
+
+<style>
+body{
+  background:#020617;
+  color:white;
+  font-family:Arial;
+  text-align:center;
+  padding:30px;
+}
+
+.stat{
+  margin:10px;
+  font-size:18px;
+}
+
+button{
+  padding:10px;
+  margin:5px;
+  border:none;
+  border-radius:8px;
+  background:#22c55e;
+  cursor:pointer;
+}
+
+button:hover{
+  background:#16a34a;
+}
+
+#log{
+  margin-top:20px;
+  background:#0f172a;
+  padding:10px;
+  border-radius:10px;
+  height:120px;
+  overflow:auto;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Street Survival Simulator</h1>
+
+<div class="stat">❤️ Health: <span id="health">100</span></div>
+<div class="stat">⚡ Energy: <span id="energy">100</span></div>
+<div class="stat">🧠 Stability: <span id="mind">100</span></div>
+<div class="stat">💰 Money: <span id="money">50</span></div>
+
+<hr>
+
+<button onclick="rest()">Rest</button>
+<button onclick="work()">Work</button>
+<button onclick="risk()">Take Risk</button>
+<button onclick="recover()">Recover</button>
+
+<div id="log"></div>
+
+<script>
+let health=100, energy=100, mind=100, money=50;
+
+function update(){
+  document.getElementById("health").innerText=health;
+  document.getElementById("energy").innerText=energy;
+  document.getElementById("mind").innerText=mind;
+  document.getElementById("money").innerText=money;
+}
+
+function log(text){
+  document.getElementById("log").innerHTML += text+"<br>";
+}
+
+function rest(){
+  energy += 20;
+  health += 5;
+  mind += 5;
+  log("You rest and regain strength.");
+  clamp();
+  update();
+}
+
+function work(){
+  energy -= 20;
+  mind -= 5;
+  money += 25;
+  log("You worked and earned money.");
+  clamp();
+  update();
+}
+
+function risk(){
+  let outcome = Math.random();
+
+  if(outcome < 0.5){
+    money += 50;
+    health -= 15;
+    mind -= 10;
+    log("You took a risk and gained money, but it cost you.");
+  } else {
+    health -= 25;
+    mind -= 20;
+    log("The risk backfired badly.");
+  }
+
+  clamp();
+  update();
+}
+
+function recover(){
+  if(money >= 20){
+    money -= 20;
+    mind += 25;
+    health += 10;
+    log("You focus on recovery and feel better.");
+  } else {
+    log("Not enough money to recover.");
+  }
+
+  clamp();
+  update();
+}
+
+function clamp(){
+  health = Math.max(0, Math.min(100, health));
+  energy = Math.max(0, Math.min(100, energy));
+  mind = Math.max(0, Math.min(100, mind));
+}
+
+update();
+</script>
+
+</body>
+</html>
