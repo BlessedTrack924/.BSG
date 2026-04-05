@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Speedster Sandbox</title>
+<title>Speedster Game</title>
 <style>
 body { margin:0; overflow:hidden; background:black; }
 #ui {
   position:absolute;
-  top:12px;
-  left:12px;
+  top:10px;
+  left:10px;
   color:white;
   font-family:Arial;
-  z-index:20;
+  z-index:10;
 }
 </style>
 </head>
@@ -18,17 +18,15 @@ body { margin:0; overflow:hidden; background:black; }
 <body>
 
 <div id="ui">
-⚡ Speedster Sandbox<br>
-WASD move | Shift toggle speed | F dash
+⚡ Speedster Prototype<br>
+WASD move | Shift = speed | F = dash
 </div>
 
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 
 <script>
 const scene = new THREE.Scene();
-
-// ✅ FIXED FOG (was too dark before)
-scene.fog = new THREE.Fog(0x050510, 80, 300);
+scene.fog = new THREE.Fog(0x0a0a1a, 80, 300);
 
 // CAMERA
 const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
@@ -37,10 +35,10 @@ camera.position.set(0,8,14);
 // RENDERER
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth, innerHeight);
-renderer.setClearColor(0x0a0a1a); // ✅ brighter background
+renderer.setClearColor(0x0a0a1a);
 document.body.appendChild(renderer.domElement);
 
-// ✅ STRONGER LIGHTING
+// LIGHTING
 scene.add(new THREE.AmbientLight(0xffffff,1.2));
 
 const light = new THREE.DirectionalLight(0xffffff,1);
@@ -50,10 +48,23 @@ scene.add(light);
 // GROUND
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(200,200),
-  new THREE.MeshBasicMaterial({color:0x222244})
+  new THREE.MeshBasicMaterial({color:0x1a1f44})
 );
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
+
+// CITY
+function building(x,z){
+  const b = new THREE.Mesh(
+    new THREE.BoxGeometry(6, Math.random()*20+10, 6),
+    new THREE.MeshBasicMaterial({color:0x2a2f66})
+  );
+  b.position.set(x, b.geometry.parameters.height/2, z);
+  scene.add(b);
+}
+for(let i=0;i<50;i++){
+  building(Math.random()*150-75, Math.random()*150-75);
+}
 
 // PLAYER
 const player = new THREE.Mesh(
@@ -63,6 +74,29 @@ const player = new THREE.Mesh(
 player.position.y = 1;
 scene.add(player);
 
+// AURA
+const aura = new THREE.Mesh(
+  new THREE.SphereGeometry(2,32,32),
+  new THREE.MeshBasicMaterial({
+    color:0x6622ff,
+    transparent:true,
+    opacity:0.1
+  })
+);
+scene.add(aura);
+
+// RING
+const ring = new THREE.Mesh(
+  new THREE.RingGeometry(1.5,2.2,64),
+  new THREE.MeshBasicMaterial({
+    color:0x8844ff,
+    transparent:true,
+    opacity:0.5,
+    side:THREE.DoubleSide
+  })
+);
+scene.add(ring);
+
 // INPUT
 let keys = {};
 let sprinting = false;
@@ -70,28 +104,90 @@ let yaw = 0;
 
 document.addEventListener("keydown", e=>{
   keys[e.key.toLowerCase()] = true;
-  if(e.key === "Shift") sprinting = !sprinting;
+  if(e.key==="Shift") sprinting = !sprinting;
+  if(e.key==="f") dash();
 });
-
 document.addEventListener("keyup", e=>{
   keys[e.key.toLowerCase()] = false;
 });
-
-document.addEventListener("click", ()=>{
-  document.body.requestPointerLock();
-});
-
+document.addEventListener("click", ()=>document.body.requestPointerLock());
 document.addEventListener("mousemove", e=>{
-  if(document.pointerLockElement === document.body){
-    yaw -= e.movementX * 0.0025;
+  if(document.pointerLockElement===document.body){
+    yaw -= e.movementX*0.0025;
   }
 });
+
+// EFFECTS
+let trail = [];
+let particles = [];
+let lightning = [];
+let shock = [];
+
+// DASH
+function dash(){
+  const dir = new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)).multiplyScalar(5);
+  player.position.add(dir);
+
+  const wave = new THREE.Mesh(
+    new THREE.RingGeometry(0.5,1,32),
+    new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:1,side:THREE.DoubleSide})
+  );
+  wave.rotation.x=-Math.PI/2;
+  wave.position.copy(player.position);
+  scene.add(wave);
+  shock.push({mesh:wave,life:1,scale:1});
+}
+
+// TRAIL
+function createTrail(){
+  const t = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3,0.6,2,8),
+    new THREE.MeshBasicMaterial({color:0x4488ff,transparent:true,opacity:0.4})
+  );
+  t.rotation.x=Math.PI/2;
+  t.position.copy(player.position);
+  scene.add(t);
+  trail.push({mesh:t,life:1});
+}
+
+// PARTICLE
+function createParticle(){
+  const p = new THREE.Mesh(
+    new THREE.SphereGeometry(0.05),
+    new THREE.MeshBasicMaterial({color:0xaa66ff,transparent:true,opacity:1})
+  );
+  p.position.copy(player.position);
+  scene.add(p);
+  particles.push({
+    mesh:p,
+    vel:new THREE.Vector3(
+      (Math.random()-0.5)*0.4,
+      Math.random()*0.3,
+      (Math.random()-0.5)*0.4
+    ),
+    life:1
+  });
+}
+
+// LIGHTNING
+function createLightning(){
+  const geo = new THREE.TorusGeometry(1.2,0.05,8,32);
+  const mat = new THREE.MeshBasicMaterial({
+    color:0xaa66ff,
+    transparent:true,
+    opacity:0.6
+  });
+  const l = new THREE.Mesh(geo,mat);
+  l.position.copy(player.position);
+  scene.add(l);
+  lightning.push({mesh:l,life:0.5});
+}
 
 // LOOP
 function animate(){
   requestAnimationFrame(animate);
 
-  let speed = sprinting ? 0.4 : 0.15;
+  let speed = sprinting ? 0.45 : 0.15;
 
   const dir = new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
   const right = new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
@@ -110,7 +206,74 @@ function animate(){
     player.rotation.y = Math.atan2(move.x, move.z);
   }
 
-  // CAMERA FOLLOW
+  // AURA + RING
+  aura.position.copy(player.position);
+  aura.material.opacity = sprinting ? 0.3 : 0.1;
+
+  const pulse = 1 + Math.sin(Date.now()*0.01)*0.1;
+  aura.scale.set(pulse,pulse,pulse);
+
+  ring.position.copy(player.position);
+  ring.rotation.y += 0.05;
+  ring.rotation.x = Math.PI/2;
+  ring.scale.set(pulse,pulse,pulse);
+
+  // EFFECTS
+  if(sprinting && move.length()>0.05){
+    createTrail();
+    createParticle();
+    if(Math.random()<0.3) createLightning();
+  }
+
+  // UPDATE TRAIL
+  for(let i=trail.length-1;i>=0;i--){
+    let t=trail[i];
+    t.life-=0.05;
+    t.mesh.material.opacity=t.life*0.6;
+    t.mesh.scale.z+=0.5;
+    if(t.life<=0){
+      scene.remove(t.mesh);
+      trail.splice(i,1);
+    }
+  }
+
+  // UPDATE PARTICLES
+  for(let i=particles.length-1;i>=0;i--){
+    let p=particles[i];
+    p.life-=0.03;
+    p.mesh.material.opacity=p.life;
+    p.mesh.position.add(p.vel);
+    if(p.life<=0){
+      scene.remove(p.mesh);
+      particles.splice(i,1);
+    }
+  }
+
+  // LIGHTNING
+  for(let i=lightning.length-1;i>=0;i--){
+    let l=lightning[i];
+    l.life-=0.05;
+    l.mesh.material.opacity=l.life;
+    if(l.life<=0){
+      scene.remove(l.mesh);
+      lightning.splice(i,1);
+    }
+  }
+
+  // SHOCK
+  for(let i=shock.length-1;i>=0;i--){
+    let s=shock[i];
+    s.life-=0.05;
+    s.scale+=0.2;
+    s.mesh.scale.set(s.scale,s.scale,s.scale);
+    s.mesh.material.opacity=s.life;
+    if(s.life<=0){
+      scene.remove(s.mesh);
+      shock.splice(i,1);
+    }
+  }
+
+  // CAMERA
   camera.position.set(
     player.position.x + Math.sin(yaw)*6,
     player.position.y + 4,
@@ -119,16 +282,16 @@ function animate(){
 
   camera.lookAt(player.position);
 
-  renderer.render(scene, camera);
+  renderer.render(scene,camera);
 }
 
 animate();
 
 // RESIZE
 window.addEventListener("resize", ()=>{
-  camera.aspect = innerWidth / innerHeight;
+  camera.aspect = innerWidth/innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
+  renderer.setSize(innerWidth,innerHeight);
 });
 </script>
 
